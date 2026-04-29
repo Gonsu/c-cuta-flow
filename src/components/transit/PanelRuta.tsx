@@ -66,12 +66,32 @@ export function PanelRuta({
   onAlgoritmo,
   distanciaM,
   duracionS,
+  duracionBaseS,
+  factorTrafico,
+  nivelTrafico,
   cargando,
   error,
   tieneRuta,
 }: PanelRutaProps) {
   const [expandido, setExpandido] = useState(false);
   const m = METRICAS[algoritmo];
+
+  const traficoLabel =
+    nivelTrafico === "libre"
+      ? "Fluido"
+      : nivelTrafico === "moderado"
+        ? "Moderado"
+        : nivelTrafico === "pesado"
+          ? "Pesado"
+          : nivelTrafico === "congestionado"
+            ? "Congestionado"
+            : "—";
+  const traficoColor =
+    nivelTrafico === "libre"
+      ? "text-traffic-free"
+      : nivelTrafico === "pesado" || nivelTrafico === "congestionado"
+        ? "text-traffic-heavy"
+        : "text-traffic-mid";
 
   return (
     <div
