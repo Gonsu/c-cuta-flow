@@ -211,6 +211,7 @@ export function PanelRuta({
                 {tieneRuta ? "Ruta óptima" : "Sin ruta"}
               </span>
             </div>
+          </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-border bg-paper py-2.5 text-center">
             <Mini icono={<Route className="size-3.5" />} label="Distancia" valor={formatoDist(distanciaM)} />
