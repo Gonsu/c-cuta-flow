@@ -121,12 +121,21 @@ export function PanelRuta({
   enVivo,
   onEnVivo,
   ultimaActualizacion,
+  intervaloMs,
+  onIntervaloMs,
   evitarSemaforos,
   onEvitarSemaforos,
   comparacionEvitar,
+  rutas,
+  seleccionIdx,
+  onSeleccionarRuta,
+  esRutaFavorita,
+  onToggleFavorita,
+  puedeAgregarFavorita,
 }: PanelRutaProps) {
   const [expandido, setExpandido] = useState(false);
   const m = METRICAS[algoritmo];
+  const intervaloS = Math.round(intervaloMs / 1000);
 
   const segundosDesdeUpdate =
     ultimaActualizacion != null
