@@ -1,8 +1,9 @@
 /**
  * BuscadorRuta
  * Buscador con autocompletado real (Nominatim) restringido a Cúcuta.
+ * Soporta lugares favoritos (guardar/usar/eliminar).
  */
-import { ArrowUpDown, Crosshair, MapPin, Navigation, Loader2 } from "lucide-react";
+import { ArrowUpDown, Crosshair, MapPin, Navigation, Loader2, Star, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { buscarLugares, type Punto } from "@/lib/routing";
 
@@ -17,6 +18,11 @@ interface BuscadorRutaProps {
   /** Permite abrir el buscador desde un botón externo. */
   abrirEn?: "origen" | "destino" | null;
   onAbiertoConsumido?: () => void;
+  /** Favoritos */
+  favoritos?: Punto[];
+  esLugarFavorito?: (p: Punto | null) => boolean;
+  onToggleFavorito?: (p: Punto) => void;
+  onEliminarFavorito?: (p: Punto) => void;
 }
 
 const SUGERENCIAS_RAPIDAS: Punto[] = [
