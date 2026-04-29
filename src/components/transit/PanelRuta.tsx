@@ -3,9 +3,10 @@
  * Bottom sheet con info de la ruta + botón para abrir telemetría académica.
  * Cuando se expande la telemetría, muestra Dijkstra vs A*, métricas y tráfico.
  */
-import { ChevronDown, ChevronUp, Clock, Navigation, Route } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, CloudRain, Navigation, Route, TrafficCone } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import type { ClimaCucuta } from "@/lib/routing";
 
 interface PanelRutaProps {
   algoritmo: "astar" | "dijkstra";
@@ -15,6 +16,10 @@ interface PanelRutaProps {
   duracionBaseS: number | null;
   factorTrafico: number | null;
   nivelTrafico: "libre" | "moderado" | "pesado" | "congestionado" | null;
+  semaforos: number | null;
+  densidadSemaforos: number | null;
+  penalizacionSemaforosS: number | null;
+  clima: ClimaCucuta | null;
   cargando: boolean;
   error: string | null;
   tieneRuta: boolean;
@@ -69,6 +74,10 @@ export function PanelRuta({
   duracionBaseS,
   factorTrafico,
   nivelTrafico,
+  semaforos,
+  densidadSemaforos,
+  penalizacionSemaforosS,
+  clima,
   cargando,
   error,
   tieneRuta,
@@ -136,7 +145,28 @@ export function PanelRuta({
               valor={traficoLabel}
               acento={traficoColor}
             />
-            <Mini icono={<span className="text-sm">☀</span>} label="Clima" valor="28°" />
+            <Mini
+              icono={
+                clima && clima.lluviaMmH > 0 ? (
+                  <CloudRain className="size-3.5" />
+                ) : (
+                  <span className="text-sm">☀</span>
+                )
+              }
+              label="Clima"
+              valor={
+                clima
+                  ? `${Math.round(clima.temperaturaC)}°${
+                      clima.lluviaMmH > 0
+                        ? ` · ${clima.lluviaMmH.toFixed(1).replace(".", ",")}mm`
+                        : ""
+                    }`
+                  : "—"
+              }
+              acento={
+                clima && clima.lluviaMmH >= 2.5 ? "text-primary" : undefined
+              }
+            />
           </div>
 
           {/* Comparativa: flujo libre vs ETA real */}
@@ -153,6 +183,51 @@ export function PanelRuta({
               <span className="rounded-full bg-traffic-mid/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-traffic-mid">
                 ×{factorTrafico.toFixed(2).replace(".", ",")} tráfico
               </span>
+            </div>
+          )}
+
+          {/* Desglose de penalizaciones (semáforos + clima) */}
+          {(semaforos != null || clima) && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {semaforos != null && (
+                <div className="rounded-lg border border-border bg-paper p-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <TrafficCone className="size-3 text-traffic-mid" />
+                    <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
+                      Semáforos OSM
+                    </p>
+                  </div>
+                  <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-ink">
+                    {semaforos}
+                    {densidadSemaforos != null && (
+                      <span className="ml-1 text-[10px] font-medium text-ink-muted">
+                        · {densidadSemaforos.toFixed(1).replace(".", ",")}/km
+                      </span>
+                    )}
+                  </p>
+                  {penalizacionSemaforosS != null && (
+                    <p className="font-mono text-[10px] text-ink-muted">
+                      +{Math.round(penalizacionSemaforosS)} s
+                    </p>
+                  )}
+                </div>
+              )}
+              {clima && (
+                <div className="rounded-lg border border-border bg-paper p-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <CloudRain className="size-3 text-primary" />
+                    <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
+                      Clima · Open-Meteo
+                    </p>
+                  </div>
+                  <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-ink">
+                    {clima.descripcion}
+                  </p>
+                  <p className="font-mono text-[10px] text-ink-muted">
+                    f_clima ×{clima.factorClima.toFixed(2).replace(".", ",")}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

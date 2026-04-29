@@ -123,6 +123,10 @@ export function PantallaCelular() {
         duracionBaseS={principal?.duracionBase ?? null}
         factorTrafico={principal?.factorTrafico ?? null}
         nivelTrafico={principal?.nivelTrafico ?? null}
+        semaforos={principal?.semaforos ?? null}
+        densidadSemaforos={principal?.densidadSemaforos ?? null}
+        penalizacionSemaforosS={principal?.penalizacionSemaforosS ?? null}
+        clima={principal?.clima ?? null}
         cargando={cargando}
         error={error}
         tieneRuta={!!principal}
