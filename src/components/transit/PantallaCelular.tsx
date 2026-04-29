@@ -174,6 +174,10 @@ export function PantallaCelular() {
           modoSeleccion={modoSeleccion}
           abrirEn={abrirBuscadorEn}
           onAbiertoConsumido={() => setAbrirBuscadorEn(null)}
+          favoritos={favs.lugares}
+          esLugarFavorito={favs.esLugarFavorito}
+          onToggleFavorito={favs.toggleLugar}
+          onEliminarFavorito={favs.eliminarLugar}
         />
       </div>
 
