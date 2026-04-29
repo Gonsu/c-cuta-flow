@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Clock,
   CloudRain,
+  Heart,
   Navigation,
   Radio,
   Route,
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import type { ClimaCucuta } from "@/lib/routing";
+import type { ClimaCucuta, RutaCalculada } from "@/lib/routing";
 
 interface ComparacionEvitar {
   duracion: number;
@@ -45,10 +46,20 @@ interface PanelRutaProps {
   enVivo: boolean;
   onEnVivo: (v: boolean) => void;
   ultimaActualizacion: number | null;
+  intervaloMs: number;
+  onIntervaloMs: (ms: number) => void;
   // Evitar semáforos
   evitarSemaforos: boolean;
   onEvitarSemaforos: (v: boolean) => void;
   comparacionEvitar?: ComparacionEvitar | null;
+  // Alternativas seleccionables
+  rutas: RutaCalculada[];
+  seleccionIdx: number;
+  onSeleccionarRuta: (i: number) => void;
+  // Favoritos
+  esRutaFavorita: boolean;
+  onToggleFavorita: () => void;
+  puedeAgregarFavorita: boolean;
 }
 
 function formatoDist(m: number | null) {
@@ -110,12 +121,21 @@ export function PanelRuta({
   enVivo,
   onEnVivo,
   ultimaActualizacion,
+  intervaloMs,
+  onIntervaloMs,
   evitarSemaforos,
   onEvitarSemaforos,
   comparacionEvitar,
+  rutas,
+  seleccionIdx,
+  onSeleccionarRuta,
+  esRutaFavorita,
+  onToggleFavorita,
+  puedeAgregarFavorita,
 }: PanelRutaProps) {
   const [expandido, setExpandido] = useState(false);
   const m = METRICAS[algoritmo];
+  const intervaloS = Math.round(intervaloMs / 1000);
 
   const segundosDesdeUpdate =
     ultimaActualizacion != null
@@ -169,9 +189,28 @@ export function PanelRuta({
                 )}
               </div>
             </div>
-            <span className="rounded-full bg-primary-light px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-dark">
-              {tieneRuta ? "Ruta óptima" : "Sin ruta"}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onToggleFavorita}
+                disabled={!puedeAgregarFavorita}
+                aria-label={esRutaFavorita ? "Quitar ruta de favoritos" : "Guardar ruta como favorita"}
+                aria-pressed={esRutaFavorita}
+                className={cn(
+                  "flex size-8 items-center justify-center rounded-full border transition",
+                  esRutaFavorita
+                    ? "border-primary bg-primary-light/40 text-primary"
+                    : "border-border bg-paper text-ink-muted hover:bg-surface",
+                  !puedeAgregarFavorita && "opacity-40",
+                )}
+              >
+                <Heart
+                  className={cn("size-3.5", esRutaFavorita && "fill-current")}
+                />
+              </button>
+              <span className="rounded-full bg-primary-light px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-dark">
+                {tieneRuta ? "Ruta óptima" : "Sin ruta"}
+              </span>
+            </div>
           </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-border bg-paper py-2.5 text-center">
@@ -268,6 +307,69 @@ export function PanelRuta({
             </div>
           )}
 
+          {/* Alternativas seleccionables — pides 2-3 caminos para escoger */}
+          {rutas.length > 1 && (
+            <div className="mt-3">
+              <p className="mb-1.5 font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
+                Caminos sugeridos · elige uno
+              </p>
+              <div className="grid grid-cols-1 gap-1.5">
+                {rutas.slice(0, 3).map((r, i) => {
+                  const activo = i === seleccionIdx;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => onSeleccionarRuta(i)}
+                      aria-pressed={activo}
+                      className={cn(
+                        "flex items-center justify-between rounded-lg border px-3 py-2 text-left transition",
+                        activo
+                          ? "border-primary bg-primary-light/30"
+                          : "border-border bg-paper hover:bg-surface",
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "flex size-5 items-center justify-center rounded-full font-mono text-[10px] font-bold",
+                            activo
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-border text-ink-muted",
+                          )}
+                        >
+                          {i + 1}
+                        </span>
+                        <div>
+                          <p className="text-[11px] font-semibold text-ink">
+                            {i === 0 ? "Más rápida" : i === 1 ? "Alternativa" : "Otra opción"}
+                          </p>
+                          <p className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+                            {formatoDist(r.distancia)} · {r.semaforos} sem.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono text-sm font-semibold tabular-nums text-ink">
+                          {Math.max(1, Math.round(r.duracion / 60))} min
+                        </p>
+                        {i > 0 && rutas[0] && (
+                          <p className="font-mono text-[9px] text-ink-muted">
+                            {(() => {
+                              const diff = (r.duracion - rutas[0].duracion) / 60;
+                              return diff > 0
+                                ? `+${diff.toFixed(1).replace(".", ",")} min`
+                                : "—";
+                            })()}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Toggles: modo en vivo + evitar semáforos */}
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button
@@ -294,7 +396,7 @@ export function PanelRuta({
                       ? segundosDesdeUpdate != null
                         ? `act. hace ${segundosDesdeUpdate}s`
                         : "actualizando…"
-                      : "Refresca cada 60 s"}
+                      : `Refresca cada ${intervaloS} s`}
                   </p>
                 </div>
               </div>
@@ -352,6 +454,39 @@ export function PanelRuta({
               </span>
             </button>
           </div>
+
+          {/* Selector de intervalo de refresco (solo si modo en vivo activo) */}
+          {enVivo && (
+            <div className="mt-2 flex items-center justify-between rounded-lg border border-border bg-paper px-3 py-2">
+              <div>
+                <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
+                  Intervalo de refresco
+                </p>
+                <p className="font-mono text-[10px] text-ink-muted">
+                  Cada {intervaloS} s — clima + semáforos + ETA
+                </p>
+              </div>
+              <div className="flex overflow-hidden rounded-md border border-border bg-surface">
+                {[15_000, 30_000, 60_000].map((ms) => {
+                  const activo = intervaloMs === ms;
+                  return (
+                    <button
+                      key={ms}
+                      onClick={() => onIntervaloMs(ms)}
+                      className={cn(
+                        "px-2 py-1 font-mono text-[10px] font-semibold tabular-nums transition",
+                        activo
+                          ? "bg-primary text-primary-foreground"
+                          : "text-ink hover:bg-paper",
+                      )}
+                    >
+                      {ms / 1000}s
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Comparación directa: ruta normal vs evitando semáforos */}
           {evitarSemaforos &&

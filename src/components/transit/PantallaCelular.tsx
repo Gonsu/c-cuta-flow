@@ -5,11 +5,12 @@
  * comparación "evitar semáforos".
  */
 import { useEffect, useRef, useState } from "react";
-import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map as MapIcon } from "lucide-react";
+import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map as MapIcon, Star, X } from "lucide-react";
 import { CucutaMap, type CucutaMapHandle, type Capa } from "./CucutaMap";
 import { BuscadorRuta } from "./BuscadorRuta";
 import { PanelRuta } from "./PanelRuta";
 import { useRuta } from "@/hooks/useRuta";
+import { useFavoritos } from "@/hooks/useFavoritos";
 import {
   calcularRutaOSRM,
   reverseGeocode,
@@ -44,6 +45,7 @@ export function PantallaCelular() {
 
   // Modo en vivo y "evitar semáforos"
   const [enVivo, setEnVivo] = useState(false);
+  const [intervaloMs, setIntervaloMs] = useState<number>(60_000);
   const [evitarSemaforos, setEvitarSemaforos] = useState(false);
 
   // Capas + ubicación + abrir buscador
@@ -51,13 +53,21 @@ export function PantallaCelular() {
   const [menuCapas, setMenuCapas] = useState(false);
   const [ubicacion, setUbicacion] = useState<{ lat: number; lng: number } | null>(null);
   const [abrirBuscadorEn, setAbrirBuscadorEn] = useState<"origen" | "destino" | null>(null);
+  const [panelFavoritas, setPanelFavoritas] = useState(false);
   const mapaRef = useRef<CucutaMapHandle>(null);
 
-  const { principal, alterna, cargando, error, ultimaActualizacion } = useRuta(
-    origen,
-    destino,
-    { evitarSemaforos, live: enVivo, liveIntervalMs: 60_000 },
-  );
+  const favs = useFavoritos();
+
+  const {
+    rutas,
+    principal,
+    alterna,
+    seleccionIdx,
+    seleccionarRuta,
+    cargando,
+    error,
+    ultimaActualizacion,
+  } = useRuta(origen, destino, { evitarSemaforos, live: enVivo, liveIntervalMs: intervaloMs });
 
   // Comparación "ruta normal" vs "evitando semáforos":
   // mantenemos en estado la versión normal para compararla con la actual.
@@ -164,6 +174,10 @@ export function PantallaCelular() {
           modoSeleccion={modoSeleccion}
           abrirEn={abrirBuscadorEn}
           onAbiertoConsumido={() => setAbrirBuscadorEn(null)}
+          favoritos={favs.lugares}
+          esLugarFavorito={favs.esLugarFavorito}
+          onToggleFavorito={favs.toggleLugar}
+          onEliminarFavorito={favs.eliminarLugar}
         />
       </div>
 
@@ -222,7 +236,81 @@ export function PantallaCelular() {
         >
           <Locate className="size-4" />
         </button>
+        <button
+          onClick={() => setPanelFavoritas((v) => !v)}
+          className={`relative flex size-10 items-center justify-center rounded-full shadow-elevated transition ${
+            panelFavoritas ? "bg-primary text-primary-foreground" : "bg-surface text-ink hover:bg-paper"
+          }`}
+          aria-label="Rutas favoritas"
+        >
+          <Star className={`size-4 ${panelFavoritas ? "fill-current" : ""}`} />
+          {favs.rutas.length > 0 && (
+            <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-ink font-mono text-[9px] font-bold text-paper">
+              {favs.rutas.length}
+            </span>
+          )}
+        </button>
       </div>
+
+      {/* Panel de rutas favoritas */}
+      {panelFavoritas && (
+        <div className="absolute right-3 top-[16.5rem] z-[600] w-64 overflow-hidden rounded-xl border border-border bg-surface shadow-elevated">
+          <div className="flex items-center justify-between border-b border-border px-3 py-2">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-ink">
+              Rutas favoritas
+            </p>
+            <button
+              onClick={() => setPanelFavoritas(false)}
+              className="text-ink-muted hover:text-ink"
+              aria-label="Cerrar"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+          {favs.rutas.length === 0 ? (
+            <div className="px-3 py-4 text-center">
+              <p className="text-xs text-ink-muted">
+                Aún no tienes rutas guardadas.
+              </p>
+              <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-subtle">
+                Toca el ♥ del panel inferior
+              </p>
+            </div>
+          ) : (
+            <ul className="max-h-72 overflow-y-auto">
+              {favs.rutas.map((r) => (
+                <li
+                  key={r.id}
+                  className="group flex items-center gap-1 border-b border-border last:border-b-0 hover:bg-paper"
+                >
+                  <button
+                    onClick={() => {
+                      setOrigen(r.origen);
+                      setDestino(r.destino);
+                      setPanelFavoritas(false);
+                    }}
+                    className="flex flex-1 flex-col gap-0.5 px-3 py-2 text-left"
+                  >
+                    <p className="truncate text-[11px] font-semibold text-ink">
+                      {r.nombre}
+                    </p>
+                    <p className="truncate font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+                      {r.origen.label} → {r.destino.label}
+                    </p>
+                  </button>
+                  <button
+                    onClick={() => favs.eliminarRuta(r.id)}
+                    aria-label="Eliminar ruta favorita"
+                    className="px-2 py-2 text-ink-muted opacity-0 transition group-hover:opacity-100 hover:text-ink"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Botones de zoom (debajo, mismo lado) */}
       <div className="absolute bottom-[46%] right-3 z-[500] flex flex-col overflow-hidden rounded-full border border-border bg-surface shadow-elevated">
@@ -262,6 +350,8 @@ export function PantallaCelular() {
         enVivo={enVivo}
         onEnVivo={setEnVivo}
         ultimaActualizacion={ultimaActualizacion}
+        intervaloMs={intervaloMs}
+        onIntervaloMs={setIntervaloMs}
         evitarSemaforos={evitarSemaforos}
         onEvitarSemaforos={setEvitarSemaforos}
         comparacionEvitar={
@@ -274,6 +364,14 @@ export function PantallaCelular() {
               }
             : null
         }
+        rutas={rutas}
+        seleccionIdx={seleccionIdx}
+        onSeleccionarRuta={seleccionarRuta}
+        esRutaFavorita={favs.esRutaFavorita(origen, destino)}
+        onToggleFavorita={() => {
+          if (origen && destino) favs.toggleRuta(origen, destino);
+        }}
+        puedeAgregarFavorita={!!origen && !!destino}
       />
     </div>
   );
