@@ -182,21 +182,76 @@ export function BuscadorRuta({
               Tocar en el mapa para fijar {foco}
             </button>
 
+            {/* Acceso rápido a favoritos guardados */}
+            {favoritos.length > 0 && resultados.length === 0 && (
+              <>
+                <p className="mt-2 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-primary">
+                  ★ Favoritos
+                </p>
+                <ul className="max-h-32 overflow-y-auto">
+                  {favoritos.map((p) => (
+                    <li
+                      key={`fav-${p.lat}-${p.lng}`}
+                      className="group flex items-center gap-1 rounded-md hover:bg-surface"
+                    >
+                      <button
+                        onClick={() => elegir(p)}
+                        className="flex flex-1 items-center gap-2 px-2 py-2 text-left"
+                      >
+                        <Star className="size-3.5 shrink-0 fill-primary text-primary" />
+                        <span className="truncate text-xs text-ink">{p.label}</span>
+                      </button>
+                      {onEliminarFavorito && (
+                        <button
+                          onClick={() => onEliminarFavorito(p)}
+                          aria-label="Eliminar favorito"
+                          className="px-2 py-1 text-ink-muted opacity-0 transition group-hover:opacity-100 hover:text-ink"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
             <p className="mt-2 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-ink-muted">
               {resultados.length > 0 ? "Resultados" : "Lugares populares"}
             </p>
             <ul className="max-h-44 overflow-y-auto">
-              {lista.map((p) => (
-                <li key={`${p.lat}-${p.lng}-${p.label}`}>
-                  <button
-                    onClick={() => elegir(p)}
-                    className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition hover:bg-surface"
+              {lista.map((p) => {
+                const fav = esLugarFavorito?.(p) ?? false;
+                return (
+                  <li
+                    key={`${p.lat}-${p.lng}-${p.label}`}
+                    className="group flex items-center gap-1 rounded-md hover:bg-surface"
                   >
-                    <MapPin className="size-3.5 shrink-0 text-ink-muted" />
-                    <span className="truncate text-xs text-ink">{p.label}</span>
-                  </button>
-                </li>
-              ))}
+                    <button
+                      onClick={() => elegir(p)}
+                      className="flex flex-1 items-center gap-2 px-2 py-2 text-left"
+                    >
+                      <MapPin className="size-3.5 shrink-0 text-ink-muted" />
+                      <span className="truncate text-xs text-ink">{p.label}</span>
+                    </button>
+                    {onToggleFavorito && (
+                      <button
+                        onClick={() => onToggleFavorito(p)}
+                        aria-label={fav ? "Quitar de favoritos" : "Guardar como favorito"}
+                        aria-pressed={fav}
+                        className="px-2 py-1 text-ink-muted transition hover:text-primary"
+                      >
+                        <Star
+                          className={cn(
+                            "size-3.5",
+                            fav && "fill-primary text-primary",
+                          )}
+                        />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
               {lista.length === 0 && (
                 <li className="px-2 py-2 text-xs text-ink-muted">Sin resultados.</li>
               )}
