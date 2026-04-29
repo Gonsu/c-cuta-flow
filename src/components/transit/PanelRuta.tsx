@@ -135,7 +135,7 @@ export function PanelRuta({
 }: PanelRutaProps) {
   const [expandido, setExpandido] = useState(false);
   const m = METRICAS[algoritmo];
-  const intervaloS = Math.round(intervaloMs / 1000);
+  const intervaloS = Math.round((intervaloMs ?? 60_000) / 1000);
 
   const segundosDesdeUpdate =
     ultimaActualizacion != null
