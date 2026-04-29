@@ -268,7 +268,145 @@ export function PanelRuta({
             </div>
           )}
 
-          {error && (
+          {/* Toggles: modo en vivo + evitar semáforos */}
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => onEnVivo(!enVivo)}
+              className={cn(
+                "flex items-center justify-between rounded-lg border px-3 py-2 text-left transition",
+                enVivo
+                  ? "border-primary bg-primary-light/40"
+                  : "border-border bg-paper hover:bg-surface",
+              )}
+              aria-pressed={enVivo}
+            >
+              <div className="flex items-center gap-2">
+                <Radio
+                  className={cn(
+                    "size-3.5",
+                    enVivo ? "text-primary animate-pulse" : "text-ink-muted",
+                  )}
+                />
+                <div>
+                  <p className="text-[11px] font-semibold text-ink">En vivo</p>
+                  <p className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+                    {enVivo
+                      ? segundosDesdeUpdate != null
+                        ? `act. hace ${segundosDesdeUpdate}s`
+                        : "actualizando…"
+                      : "Refresca cada 60 s"}
+                  </p>
+                </div>
+              </div>
+              <span
+                className={cn(
+                  "h-4 w-7 rounded-full p-0.5 transition",
+                  enVivo ? "bg-primary" : "bg-border",
+                )}
+              >
+                <span
+                  className={cn(
+                    "block size-3 rounded-full bg-surface transition",
+                    enVivo && "translate-x-3",
+                  )}
+                />
+              </span>
+            </button>
+
+            <button
+              onClick={() => onEvitarSemaforos(!evitarSemaforos)}
+              className={cn(
+                "flex items-center justify-between rounded-lg border px-3 py-2 text-left transition",
+                evitarSemaforos
+                  ? "border-traffic-mid bg-traffic-mid/15"
+                  : "border-border bg-paper hover:bg-surface",
+              )}
+              aria-pressed={evitarSemaforos}
+            >
+              <div className="flex items-center gap-2">
+                <ConeIcon
+                  className={cn(
+                    "size-3.5",
+                    evitarSemaforos ? "text-traffic-mid" : "text-ink-muted",
+                  )}
+                />
+                <div>
+                  <p className="text-[11px] font-semibold text-ink">Evitar semáforos</p>
+                  <p className="font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+                    Recalcular ruta
+                  </p>
+                </div>
+              </div>
+              <span
+                className={cn(
+                  "h-4 w-7 rounded-full p-0.5 transition",
+                  evitarSemaforos ? "bg-traffic-mid" : "bg-border",
+                )}
+              >
+                <span
+                  className={cn(
+                    "block size-3 rounded-full bg-surface transition",
+                    evitarSemaforos && "translate-x-3",
+                  )}
+                />
+              </span>
+            </button>
+          </div>
+
+          {/* Comparación directa: ruta normal vs evitando semáforos */}
+          {evitarSemaforos &&
+            comparacionEvitar &&
+            duracionS != null &&
+            semaforos != null && (
+              <div className="mt-2 overflow-hidden rounded-lg border border-border">
+                <div className="grid grid-cols-2 divide-x divide-border bg-paper">
+                  <div className="p-2.5">
+                    <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
+                      Ruta normal
+                    </p>
+                    <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-ink">
+                      {Math.max(1, Math.round(comparacionEvitar.duracion / 60))} min
+                    </p>
+                    <p className="font-mono text-[10px] text-ink-muted">
+                      {comparacionEvitar.semaforos} semáforos · +
+                      {Math.round(comparacionEvitar.penalizacionSemaforosS)} s
+                    </p>
+                  </div>
+                  <div className="bg-traffic-mid/5 p-2.5">
+                    <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-traffic-mid">
+                      Evitando semáforos
+                    </p>
+                    <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-ink">
+                      {Math.max(1, Math.round(duracionS / 60))} min
+                    </p>
+                    <p className="font-mono text-[10px] text-ink-muted">
+                      {semaforos} semáforos · +
+                      {Math.round(penalizacionSemaforosS ?? 0)} s
+                    </p>
+                  </div>
+                </div>
+                {(() => {
+                  const diff = (comparacionEvitar.duracion - duracionS) / 60;
+                  const semDiff = comparacionEvitar.semaforos - semaforos;
+                  const ahorra = diff > 0.3;
+                  return (
+                    <div
+                      className={cn(
+                        "px-3 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider",
+                        ahorra
+                          ? "bg-traffic-free/15 text-traffic-free"
+                          : "bg-paper text-ink-muted",
+                      )}
+                    >
+                      {ahorra
+                        ? `Ahorras ≈ ${diff.toFixed(1).replace(".", ",")} min y ${semDiff} semáforos`
+                        : `Sin ahorro significativo (${diff.toFixed(1).replace(".", ",")} min)`}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             <p className="mt-3 rounded-md bg-primary-light/40 px-3 py-2 text-xs text-primary-dark">
               No se pudo calcular la ruta: {error}
             </p>
