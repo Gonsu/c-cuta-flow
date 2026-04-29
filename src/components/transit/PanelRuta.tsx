@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Clock,
   CloudRain,
+  Heart,
   Navigation,
   Radio,
   Route,
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import type { ClimaCucuta } from "@/lib/routing";
+import type { ClimaCucuta, RutaCalculada } from "@/lib/routing";
 
 interface ComparacionEvitar {
   duracion: number;
@@ -45,10 +46,20 @@ interface PanelRutaProps {
   enVivo: boolean;
   onEnVivo: (v: boolean) => void;
   ultimaActualizacion: number | null;
+  intervaloMs: number;
+  onIntervaloMs: (ms: number) => void;
   // Evitar semáforos
   evitarSemaforos: boolean;
   onEvitarSemaforos: (v: boolean) => void;
   comparacionEvitar?: ComparacionEvitar | null;
+  // Alternativas seleccionables
+  rutas: RutaCalculada[];
+  seleccionIdx: number;
+  onSeleccionarRuta: (i: number) => void;
+  // Favoritos
+  esRutaFavorita: boolean;
+  onToggleFavorita: () => void;
+  puedeAgregarFavorita: boolean;
 }
 
 function formatoDist(m: number | null) {
