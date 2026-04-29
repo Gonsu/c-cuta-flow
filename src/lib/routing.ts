@@ -63,9 +63,13 @@ export async function calcularRutaOSRM(
 ): Promise<RutaCalculada[]> {
   const { alternativas = false, evitarSemaforos = false } = opciones;
   const coordsParam = `${origen.lng},${origen.lat};${destino.lng},${destino.lat}`;
-  // Si vamos a evitar semáforos pedimos siempre alternativas para poder elegir.
-  const pedirAlt = alternativas || evitarSemaforos;
-  const url = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson&alternatives=${pedirAlt}`;
+  // Pedimos hasta 3 alternativas para que el usuario pueda elegir.
+  // OSRM acepta `alternatives=number` para forzar varias rutas distintas.
+  const altParam = alternativas || evitarSemaforos ? "3" : "false";
+  const url =
+    `https://router.project-osrm.org/route/v1/driving/${coordsParam}` +
+    `?overview=full&geometries=geojson&alternatives=${altParam}` +
+    `&continue_straight=false`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
@@ -104,18 +108,31 @@ export async function calcularRutaOSRM(
     }),
   );
 
-  // Si "evitar semáforos" está activo, la ruta principal es la de menor
-  // densidad de semáforos (penalización por km), con un sesgo a favor de
-  // ETA total para no escoger un rodeo absurdo.
-  if (evitarSemaforos && enriquecidas.length > 1) {
-    enriquecidas.sort((a, b) => {
-      const score = (r: RutaCalculada) =>
-        r.densidadSemaforos * 60 + r.duracion / 60;
-      return score(a) - score(b);
-    });
+  // Deduplicar geometrías muy parecidas (OSRM a veces devuelve casi-iguales).
+  const unicas: RutaCalculada[] = [];
+  for (const r of enriquecidas) {
+    const dup = unicas.some(
+      (u) =>
+        Math.abs(u.distancia - r.distancia) < 60 &&
+        Math.abs(u.duracion - r.duracion) < 25,
+    );
+    if (!dup) unicas.push(r);
   }
 
-  return enriquecidas;
+  // Ordenar:
+  //  • "Evitar semáforos": prioriza menor densidad de intersecciones
+  //  • Normal: prioriza menor ETA realista
+  if (evitarSemaforos && unicas.length > 1) {
+    unicas.sort(
+      (a, b) =>
+        a.densidadSemaforos * 60 + a.duracion / 60 -
+        (b.densidadSemaforos * 60 + b.duracion / 60),
+    );
+  } else {
+    unicas.sort((a, b) => a.duracion - b.duracion);
+  }
+
+  return unicas;
 }
 
 /* ------------------------------------------------------------------ */
