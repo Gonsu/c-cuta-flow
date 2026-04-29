@@ -1,12 +1,30 @@
 /**
  * PanelRuta
- * Bottom sheet con info de la ruta + botón para abrir telemetría académica.
- * Cuando se expande la telemetría, muestra Dijkstra vs A*, métricas y tráfico.
+ * Bottom sheet con info de la ruta + telemetría académica.
+ * Incluye toggle de "Modo en vivo" (refresca semáforos/clima/ETA) y
+ * "Preferir evitar semáforos" con comparación directa vs ruta normal.
  */
-import { ChevronDown, ChevronUp, Clock, CloudRain, Navigation, Route, TrafficCone } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  CloudRain,
+  Navigation,
+  Radio,
+  Route,
+  TrafficCone,
+  TrafficCone as ConeIcon,
+} from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ClimaCucuta } from "@/lib/routing";
+
+interface ComparacionEvitar {
+  duracion: number;
+  semaforos: number;
+  penalizacionSemaforosS: number;
+  distancia: number;
+}
 
 interface PanelRutaProps {
   algoritmo: "astar" | "dijkstra";
@@ -23,6 +41,14 @@ interface PanelRutaProps {
   cargando: boolean;
   error: string | null;
   tieneRuta: boolean;
+  // Modo en vivo
+  enVivo: boolean;
+  onEnVivo: (v: boolean) => void;
+  ultimaActualizacion: number | null;
+  // Evitar semáforos
+  evitarSemaforos: boolean;
+  onEvitarSemaforos: (v: boolean) => void;
+  comparacionEvitar?: ComparacionEvitar | null;
 }
 
 function formatoDist(m: number | null) {
