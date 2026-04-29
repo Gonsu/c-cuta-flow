@@ -43,6 +43,10 @@ export function BuscadorRuta({
   modoSeleccion,
   abrirEn,
   onAbiertoConsumido,
+  favoritos = [],
+  esLugarFavorito,
+  onToggleFavorito,
+  onEliminarFavorito,
 }: BuscadorRutaProps) {
   const [foco, setFoco] = useState<"origen" | "destino" | null>(null);
   const [query, setQuery] = useState("");
