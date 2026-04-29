@@ -407,6 +407,7 @@ export function PanelRuta({
               </div>
             )}
 
+          {error && (
             <p className="mt-3 rounded-md bg-primary-light/40 px-3 py-2 text-xs text-primary-dark">
               No se pudo calcular la ruta: {error}
             </p>
