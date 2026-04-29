@@ -10,6 +10,28 @@ import { cn } from "@/lib/utils";
 interface PanelRutaProps {
   algoritmo: "astar" | "dijkstra";
   onAlgoritmo: (a: "astar" | "dijkstra") => void;
+  distanciaM: number | null;
+  duracionS: number | null;
+  cargando: boolean;
+  error: string | null;
+  tieneRuta: boolean;
+}
+
+function formatoDist(m: number | null) {
+  if (m == null) return "—";
+  if (m < 1000) return `${Math.round(m)} m`;
+  return `${(m / 1000).toFixed(1).replace(".", ",")} km`;
+}
+
+function formatoMin(s: number | null) {
+  if (s == null) return "—";
+  return `${Math.max(1, Math.round(s / 60))}`;
+}
+
+function horaLlegada(s: number | null) {
+  if (s == null) return "";
+  const d = new Date(Date.now() + s * 1000);
+  return d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
 }
 
 const METRICAS = {
