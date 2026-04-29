@@ -107,9 +107,20 @@ export function PanelRuta({
   cargando,
   error,
   tieneRuta,
+  enVivo,
+  onEnVivo,
+  ultimaActualizacion,
+  evitarSemaforos,
+  onEvitarSemaforos,
+  comparacionEvitar,
 }: PanelRutaProps) {
   const [expandido, setExpandido] = useState(false);
   const m = METRICAS[algoritmo];
+
+  const segundosDesdeUpdate =
+    ultimaActualizacion != null
+      ? Math.max(0, Math.floor((Date.now() - ultimaActualizacion) / 1000))
+      : null;
 
   const traficoLabel =
     nivelTrafico === "libre"
