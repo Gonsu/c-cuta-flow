@@ -35,12 +35,24 @@ export function BuscadorRuta({
   onInvertir,
   onPickEnMapa,
   modoSeleccion,
+  abrirEn,
+  onAbiertoConsumido,
 }: BuscadorRutaProps) {
   const [foco, setFoco] = useState<"origen" | "destino" | null>(null);
   const [query, setQuery] = useState("");
   const [resultados, setResultados] = useState<Punto[]>([]);
   const [cargando, setCargando] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Abrir desde control externo (botón "Indicaciones")
+  useEffect(() => {
+    if (!abrirEn) return;
+    setFoco(abrirEn);
+    setQuery("");
+    setResultados([]);
+    setTimeout(() => inputRef.current?.focus(), 50);
+    onAbiertoConsumido?.();
+  }, [abrirEn, onAbiertoConsumido]);
 
   // Debounce búsqueda Nominatim
   useEffect(() => {
