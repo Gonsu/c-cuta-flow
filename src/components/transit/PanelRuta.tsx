@@ -12,6 +12,9 @@ interface PanelRutaProps {
   onAlgoritmo: (a: "astar" | "dijkstra") => void;
   distanciaM: number | null;
   duracionS: number | null;
+  duracionBaseS: number | null;
+  factorTrafico: number | null;
+  nivelTrafico: "libre" | "moderado" | "pesado" | "congestionado" | null;
   cargando: boolean;
   error: string | null;
   tieneRuta: boolean;
