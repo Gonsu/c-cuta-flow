@@ -350,6 +350,8 @@ export function PantallaCelular() {
         enVivo={enVivo}
         onEnVivo={setEnVivo}
         ultimaActualizacion={ultimaActualizacion}
+        intervaloMs={intervaloMs}
+        onIntervaloMs={setIntervaloMs}
         evitarSemaforos={evitarSemaforos}
         onEvitarSemaforos={setEvitarSemaforos}
         comparacionEvitar={
@@ -362,6 +364,14 @@ export function PantallaCelular() {
               }
             : null
         }
+        rutas={rutas}
+        seleccionIdx={seleccionIdx}
+        onSeleccionarRuta={seleccionarRuta}
+        esRutaFavorita={favs.esRutaFavorita(origen, destino)}
+        onToggleFavorita={() => {
+          if (origen && destino) favs.toggleRuta(origen, destino);
+        }}
+        puedeAgregarFavorita={!!origen && !!destino}
       />
     </div>
   );
