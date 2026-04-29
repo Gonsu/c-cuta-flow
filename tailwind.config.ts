@@ -19,9 +19,27 @@ export default {
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        paper: "hsl(var(--paper))",
+        surface: "hsl(var(--surface))",
+        ink: {
+          DEFAULT: "hsl(var(--ink))",
+          muted: "hsl(var(--ink-muted))",
+          subtle: "hsl(var(--ink-subtle))",
+        },
+        traffic: {
+          free: "hsl(var(--traffic-free))",
+          mid: "hsl(var(--traffic-mid))",
+          heavy: "hsl(var(--traffic-heavy))",
+        },
+        algo: {
+          astar: "hsl(var(--algo-astar))",
+          dijkstra: "hsl(var(--algo-dijkstra))",
+        },
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          dark: "hsl(var(--primary-dark))",
+          light: "hsl(var(--primary-light))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -84,6 +102,23 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-node": "pulse-node 2s ease-out infinite",
+        "dash": "dash 1.2s linear infinite",
+        "blink": "blink 1.6s ease-in-out infinite",
+      },
+      boxShadow: {
+        panel: "var(--shadow-panel)",
+        card: "var(--shadow-card)",
+        elevated: "var(--shadow-elevated)",
+        phone: "var(--shadow-phone)",
+      },
+      backgroundImage: {
+        "gradient-brand": "var(--gradient-brand)",
+        "gradient-paper": "var(--gradient-paper)",
+      },
+      fontFamily: {
+        sans: ['"IBM Plex Sans"', "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ['"IBM Plex Mono"', "ui-monospace", "SFMono-Regular", "monospace"],
       },
     },
   },
