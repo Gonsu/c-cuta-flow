@@ -172,7 +172,11 @@ function ajustarETA(
 
   // Costo unitario por semáforo: 18 s base + bonus por congestión local.
   // densidad alta ⇒ ondas verdes desincronizadas, costo crece logarítmicamente.
-  const costoUnitario = 18 + 14 * Math.min(1, Math.log10(1 + densidad) / 0.6);
+  // Si el usuario pidió "Evitar semáforos", el costo unitario sube ~70 %
+  // para que el ranker prefiera rutas con menos intersecciones.
+  const refuerzo = evitarSemaforos ? 1.7 : 1.0;
+  const costoUnitario =
+    (18 + 14 * Math.min(1, Math.log10(1 + densidad) / 0.6)) * refuerzo;
   const penalizacionS = semaforos * costoUnitario;
 
   const factor = fTraficoBase * fHora * fClima;
