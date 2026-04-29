@@ -171,7 +171,7 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
       <TileLayer
         key={capa}
         url={cfg.url}
-        subdomains={cfg.subdomains as any}
+        {...(cfg.subdomains ? { subdomains: cfg.subdomains } : {})}
         maxZoom={19}
       />
 
