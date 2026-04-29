@@ -3,9 +3,10 @@
  * Bottom sheet con info de la ruta + botón para abrir telemetría académica.
  * Cuando se expande la telemetría, muestra Dijkstra vs A*, métricas y tráfico.
  */
-import { ChevronDown, ChevronUp, Clock, Navigation, Route } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, CloudRain, Navigation, Route, TrafficCone } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import type { ClimaCucuta } from "@/lib/routing";
 
 interface PanelRutaProps {
   algoritmo: "astar" | "dijkstra";
@@ -15,6 +16,10 @@ interface PanelRutaProps {
   duracionBaseS: number | null;
   factorTrafico: number | null;
   nivelTrafico: "libre" | "moderado" | "pesado" | "congestionado" | null;
+  semaforos: number | null;
+  densidadSemaforos: number | null;
+  penalizacionSemaforosS: number | null;
+  clima: ClimaCucuta | null;
   cargando: boolean;
   error: string | null;
   tieneRuta: boolean;
