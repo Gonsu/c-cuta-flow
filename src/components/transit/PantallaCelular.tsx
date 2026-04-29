@@ -120,6 +120,9 @@ export function PantallaCelular() {
         onAlgoritmo={setAlgoritmo}
         distanciaM={principal?.distancia ?? null}
         duracionS={principal?.duracion ?? null}
+        duracionBaseS={principal?.duracionBase ?? null}
+        factorTrafico={principal?.factorTrafico ?? null}
+        nivelTrafico={principal?.nivelTrafico ?? null}
         cargando={cargando}
         error={error}
         tieneRuta={!!principal}
