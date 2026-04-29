@@ -126,7 +126,7 @@ export function PanelRuta({
   evitarSemaforos,
   onEvitarSemaforos,
   comparacionEvitar,
-  rutas,
+  rutas = [],
   seleccionIdx,
   onSeleccionarRuta,
   esRutaFavorita,
