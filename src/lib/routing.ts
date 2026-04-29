@@ -44,6 +44,13 @@ export interface RutaCalculada {
 const CUCUTA_VIEWBOX = "-72.58,7.95,-72.45,7.84"; // lon_min,lat_max,lon_max,lat_min
 const CUCUTA_BOUNDS = { lat: 7.8939, lng: -72.5078 };
 
+export interface OpcionesRuta {
+  alternativas?: boolean;
+  /** Si está activo, recalcula con multiplicador de penalización de semáforos
+   *  alto y reordena las rutas para que la principal sea la de menor penalización. */
+  evitarSemaforos?: boolean;
+}
+
 /**
  * Calcula una ruta real entre dos puntos usando OSRM público.
  * Enriquece con clima en vivo (Open-Meteo) y conteo real de semáforos
@@ -52,10 +59,13 @@ const CUCUTA_BOUNDS = { lat: 7.8939, lng: -72.5078 };
 export async function calcularRutaOSRM(
   origen: Punto,
   destino: Punto,
-  alternativas = false,
+  opciones: OpcionesRuta = {},
 ): Promise<RutaCalculada[]> {
+  const { alternativas = false, evitarSemaforos = false } = opciones;
   const coordsParam = `${origen.lng},${origen.lat};${destino.lng},${destino.lat}`;
-  const url = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson&alternatives=${alternativas}`;
+  // Si vamos a evitar semáforos pedimos siempre alternativas para poder elegir.
+  const pedirAlt = alternativas || evitarSemaforos;
+  const url = `https://router.project-osrm.org/route/v1/driving/${coordsParam}?overview=full&geometries=geojson&alternatives=${pedirAlt}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
@@ -66,13 +76,19 @@ export async function calcularRutaOSRM(
   const clima = await obtenerClimaCucuta().catch(() => null);
 
   // Para cada ruta consultamos semáforos reales en paralelo.
-  const enriquecidas = await Promise.all(
+  const enriquecidas: RutaCalculada[] = await Promise.all(
     data.routes.map(async (r: any) => {
       const coords: [number, number][] = r.geometry.coordinates.map(
         ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
       );
       const semaforos = await contarSemaforosOverpass(coords).catch(() => null);
-      const ajuste = ajustarETA(r.distance, r.duration, semaforos, clima);
+      const ajuste = ajustarETA(
+        r.distance,
+        r.duration,
+        semaforos,
+        clima,
+        evitarSemaforos,
+      );
       return {
         coords,
         distancia: r.distance,
@@ -87,6 +103,17 @@ export async function calcularRutaOSRM(
       } as RutaCalculada;
     }),
   );
+
+  // Si "evitar semáforos" está activo, la ruta principal es la de menor
+  // densidad de semáforos (penalización por km), con un sesgo a favor de
+  // ETA total para no escoger un rodeo absurdo.
+  if (evitarSemaforos && enriquecidas.length > 1) {
+    enriquecidas.sort((a, b) => {
+      const score = (r: RutaCalculada) =>
+        r.densidadSemaforos * 60 + r.duracion / 60;
+      return score(a) - score(b);
+    });
+  }
 
   return enriquecidas;
 }
@@ -112,6 +139,7 @@ function ajustarETA(
   duracionBaseS: number,
   semaforosReales: number | null,
   clima: ClimaCucuta | null,
+  evitarSemaforos = false,
 ) {
   const ahora = new Date();
   const hora = ahora.getHours() + ahora.getMinutes() / 60;
