@@ -10,6 +10,28 @@ import { cn } from "@/lib/utils";
 interface PanelRutaProps {
   algoritmo: "astar" | "dijkstra";
   onAlgoritmo: (a: "astar" | "dijkstra") => void;
+  distanciaM: number | null;
+  duracionS: number | null;
+  cargando: boolean;
+  error: string | null;
+  tieneRuta: boolean;
+}
+
+function formatoDist(m: number | null) {
+  if (m == null) return "—";
+  if (m < 1000) return `${Math.round(m)} m`;
+  return `${(m / 1000).toFixed(1).replace(".", ",")} km`;
+}
+
+function formatoMin(s: number | null) {
+  if (s == null) return "—";
+  return `${Math.max(1, Math.round(s / 60))}`;
+}
+
+function horaLlegada(s: number | null) {
+  if (s == null) return "";
+  const d = new Date(Date.now() + s * 1000);
+  return d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
 }
 
 const METRICAS = {
@@ -36,7 +58,15 @@ const TRAFICO = [
   { nombre: "Av. Libertadores", peso: 2.1, nivel: "medio" as const },
 ];
 
-export function PanelRuta({ algoritmo, onAlgoritmo }: PanelRutaProps) {
+export function PanelRuta({
+  algoritmo,
+  onAlgoritmo,
+  distanciaM,
+  duracionS,
+  cargando,
+  error,
+  tieneRuta,
+}: PanelRutaProps) {
   const [expandido, setExpandido] = useState(false);
   const m = METRICAS[algoritmo];
 
@@ -58,23 +88,25 @@ export function PanelRuta({ algoritmo, onAlgoritmo }: PanelRutaProps) {
           <div className="flex items-end justify-between">
             <div>
               <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
-                Llegada estimada
+                {cargando ? "Calculando ruta…" : error ? "Error" : "Llegada estimada"}
               </p>
               <div className="mt-0.5 flex items-baseline gap-2">
                 <span className="font-mono text-4xl font-semibold leading-none tracking-tight text-ink">
-                  14
+                  {formatoMin(duracionS)}
                 </span>
                 <span className="text-sm font-medium text-ink-muted">min</span>
-                <span className="ml-1 text-xs text-ink-muted">· 9:55 a. m.</span>
+                {duracionS != null && (
+                  <span className="ml-1 text-xs text-ink-muted">· {horaLlegada(duracionS)}</span>
+                )}
               </div>
             </div>
             <span className="rounded-full bg-primary-light px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-dark">
-              Ruta óptima
+              {tieneRuta ? "Ruta óptima" : "Sin ruta"}
             </span>
           </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-border bg-paper py-2.5 text-center">
-            <Mini icono={<Route className="size-3.5" />} label="Distancia" valor="3,2 km" />
+            <Mini icono={<Route className="size-3.5" />} label="Distancia" valor={formatoDist(distanciaM)} />
             <Mini
               icono={<Clock className="size-3.5" />}
               label="Tráfico"
@@ -84,9 +116,11 @@ export function PanelRuta({ algoritmo, onAlgoritmo }: PanelRutaProps) {
             <Mini icono={<span className="text-sm">☀</span>} label="Clima" valor="28°" />
           </div>
 
-          <p className="mt-3 text-xs text-ink-muted">
-            <span className="font-medium text-primary">Vía</span> Av. Gran Colombia → Diag. Santander
-          </p>
+          {error && (
+            <p className="mt-3 rounded-md bg-primary-light/40 px-3 py-2 text-xs text-primary-dark">
+              No se pudo calcular la ruta: {error}
+            </p>
+          )}
 
           <button className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-card transition hover:bg-primary-dark active:scale-[0.99]">
             <Navigation className="size-4" />
