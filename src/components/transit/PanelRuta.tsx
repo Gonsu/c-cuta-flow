@@ -133,11 +133,28 @@ export function PanelRuta({
             <Mini
               icono={<Clock className="size-3.5" />}
               label="Tráfico"
-              valor="Moderado"
-              acento="text-traffic-mid"
+              valor={traficoLabel}
+              acento={traficoColor}
             />
             <Mini icono={<span className="text-sm">☀</span>} label="Clima" valor="28°" />
           </div>
+
+          {/* Comparativa: flujo libre vs ETA real */}
+          {duracionBaseS != null && duracionS != null && factorTrafico != null && (
+            <div className="mt-2 flex items-center justify-between rounded-lg border border-dashed border-border bg-paper px-3 py-2">
+              <div>
+                <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
+                  Sin tráfico (OSRM base)
+                </p>
+                <p className="font-mono text-xs font-semibold tabular-nums text-ink-muted line-through">
+                  {Math.max(1, Math.round(duracionBaseS / 60))} min
+                </p>
+              </div>
+              <span className="rounded-full bg-traffic-mid/15 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-traffic-mid">
+                ×{factorTrafico.toFixed(2).replace(".", ",")} tráfico
+              </span>
+            </div>
+          )}
 
           {error && (
             <p className="mt-3 rounded-md bg-primary-light/40 px-3 py-2 text-xs text-primary-dark">
