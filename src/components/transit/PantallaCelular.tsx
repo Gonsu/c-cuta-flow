@@ -45,6 +45,7 @@ export function PantallaCelular() {
 
   // Modo en vivo y "evitar semáforos"
   const [enVivo, setEnVivo] = useState(false);
+  const [intervaloMs, setIntervaloMs] = useState<number>(60_000);
   const [evitarSemaforos, setEvitarSemaforos] = useState(false);
 
   // Capas + ubicación + abrir buscador
@@ -52,13 +53,21 @@ export function PantallaCelular() {
   const [menuCapas, setMenuCapas] = useState(false);
   const [ubicacion, setUbicacion] = useState<{ lat: number; lng: number } | null>(null);
   const [abrirBuscadorEn, setAbrirBuscadorEn] = useState<"origen" | "destino" | null>(null);
+  const [panelFavoritas, setPanelFavoritas] = useState(false);
   const mapaRef = useRef<CucutaMapHandle>(null);
 
-  const { principal, alterna, cargando, error, ultimaActualizacion } = useRuta(
-    origen,
-    destino,
-    { evitarSemaforos, live: enVivo, liveIntervalMs: 60_000 },
-  );
+  const favs = useFavoritos();
+
+  const {
+    rutas,
+    principal,
+    alterna,
+    seleccionIdx,
+    seleccionarRuta,
+    cargando,
+    error,
+    ultimaActualizacion,
+  } = useRuta(origen, destino, { evitarSemaforos, live: enVivo, liveIntervalMs: intervaloMs });
 
   // Comparación "ruta normal" vs "evitando semáforos":
   // mantenemos en estado la versión normal para compararla con la actual.
