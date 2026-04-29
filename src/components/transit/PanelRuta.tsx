@@ -189,10 +189,28 @@ export function PanelRuta({
                 )}
               </div>
             </div>
-            <span className="rounded-full bg-primary-light px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-dark">
-              {tieneRuta ? "Ruta óptima" : "Sin ruta"}
-            </span>
-          </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onToggleFavorita}
+                disabled={!puedeAgregarFavorita}
+                aria-label={esRutaFavorita ? "Quitar ruta de favoritos" : "Guardar ruta como favorita"}
+                aria-pressed={esRutaFavorita}
+                className={cn(
+                  "flex size-8 items-center justify-center rounded-full border transition",
+                  esRutaFavorita
+                    ? "border-primary bg-primary-light/40 text-primary"
+                    : "border-border bg-paper text-ink-muted hover:bg-surface",
+                  !puedeAgregarFavorita && "opacity-40",
+                )}
+              >
+                <Heart
+                  className={cn("size-3.5", esRutaFavorita && "fill-current")}
+                />
+              </button>
+              <span className="rounded-full bg-primary-light px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-dark">
+                {tieneRuta ? "Ruta óptima" : "Sin ruta"}
+              </span>
+            </div>
 
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-border bg-paper py-2.5 text-center">
             <Mini icono={<Route className="size-3.5" />} label="Distancia" valor={formatoDist(distanciaM)} />
