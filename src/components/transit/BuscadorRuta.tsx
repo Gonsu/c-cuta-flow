@@ -14,6 +14,9 @@ interface BuscadorRutaProps {
   onInvertir: () => void;
   onPickEnMapa: (campo: "origen" | "destino") => void;
   modoSeleccion: "origen" | "destino" | null;
+  /** Permite abrir el buscador desde un botón externo. */
+  abrirEn?: "origen" | "destino" | null;
+  onAbiertoConsumido?: () => void;
 }
 
 const SUGERENCIAS_RAPIDAS: Punto[] = [
