@@ -15,8 +15,17 @@ export interface RutaCalculada {
   coords: [number, number][];
   /** Distancia total en metros */
   distancia: number;
-  /** Duración estimada en segundos */
+  /**
+   * Duración ajustada en segundos — incluye tráfico, semáforos,
+   * hora pico y clima (modelo tipo Waze/Google Maps ETA).
+   */
   duracion: number;
+  /** Duración base en flujo libre devuelta por OSRM (sin tráfico). */
+  duracionBase: number;
+  /** Factor multiplicador aplicado (1.0 = flujo libre, 2.0 = doble de lento). */
+  factorTrafico: number;
+  /** Nivel cualitativo de tráfico estimado en la ruta. */
+  nivelTrafico: "libre" | "moderado" | "pesado" | "congestionado";
 }
 
 const CUCUTA_VIEWBOX = "-72.58,7.95,-72.45,7.84"; // lon_min,lat_max,lon_max,lat_min
