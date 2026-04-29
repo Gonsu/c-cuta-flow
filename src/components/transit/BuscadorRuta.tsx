@@ -6,6 +6,7 @@
 import { ArrowUpDown, Crosshair, MapPin, Navigation, Loader2, Star, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { buscarLugares, type Punto } from "@/lib/routing";
+import { cn } from "@/lib/utils";
 
 interface BuscadorRutaProps {
   origen: Punto | null;
