@@ -455,6 +455,39 @@ export function PanelRuta({
             </button>
           </div>
 
+          {/* Selector de intervalo de refresco (solo si modo en vivo activo) */}
+          {enVivo && (
+            <div className="mt-2 flex items-center justify-between rounded-lg border border-border bg-paper px-3 py-2">
+              <div>
+                <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
+                  Intervalo de refresco
+                </p>
+                <p className="font-mono text-[10px] text-ink-muted">
+                  Cada {intervaloS} s — clima + semáforos + ETA
+                </p>
+              </div>
+              <div className="flex overflow-hidden rounded-md border border-border bg-surface">
+                {[15_000, 30_000, 60_000].map((ms) => {
+                  const activo = intervaloMs === ms;
+                  return (
+                    <button
+                      key={ms}
+                      onClick={() => onIntervaloMs(ms)}
+                      className={cn(
+                        "px-2 py-1 font-mono text-[10px] font-semibold tabular-nums transition",
+                        activo
+                          ? "bg-primary text-primary-foreground"
+                          : "text-ink hover:bg-paper",
+                      )}
+                    >
+                      {ms / 1000}s
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Comparación directa: ruta normal vs evitando semáforos */}
           {evitarSemaforos &&
             comparacionEvitar &&
