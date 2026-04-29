@@ -10,22 +10,35 @@ export interface Punto {
   lng: number;
 }
 
+export interface ClimaCucuta {
+  temperaturaC: number;
+  lluviaMmH: number;
+  vientoKmH: number;
+  codigo: number;
+  descripcion: string;
+  factorClima: number;
+}
+
 export interface RutaCalculada {
   /** Polilínea siguiendo las calles reales [lat, lng] */
   coords: [number, number][];
   /** Distancia total en metros */
   distancia: number;
-  /**
-   * Duración ajustada en segundos — incluye tráfico, semáforos,
-   * hora pico y clima (modelo tipo Waze/Google Maps ETA).
-   */
+  /** Duración ajustada en segundos (modelo tipo Waze) */
   duracion: number;
-  /** Duración base en flujo libre devuelta por OSRM (sin tráfico). */
+  /** Duración base OSRM en flujo libre (sin tráfico) */
   duracionBase: number;
-  /** Factor multiplicador aplicado (1.0 = flujo libre, 2.0 = doble de lento). */
+  /** Factor multiplicador combinado de tráfico+hora+clima */
   factorTrafico: number;
-  /** Nivel cualitativo de tráfico estimado en la ruta. */
   nivelTrafico: "libre" | "moderado" | "pesado" | "congestionado";
+  /** Semáforos OSM detectados sobre el buffer de la ruta */
+  semaforos: number;
+  /** Densidad de semáforos (sem/km) */
+  densidadSemaforos: number;
+  /** Segundos sumados por penalización de intersecciones */
+  penalizacionSemaforosS: number;
+  /** Clima usado para este cálculo */
+  clima: ClimaCucuta | null;
 }
 
 const CUCUTA_VIEWBOX = "-72.58,7.95,-72.45,7.84"; // lon_min,lat_max,lon_max,lat_min
