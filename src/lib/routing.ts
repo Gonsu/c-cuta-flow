@@ -46,7 +46,8 @@ const CUCUTA_BOUNDS = { lat: 7.8939, lng: -72.5078 };
 
 /**
  * Calcula una ruta real entre dos puntos usando OSRM público.
- * El perfil "driving" devuelve geometría en GeoJSON (lon, lat).
+ * Enriquece con clima en vivo (Open-Meteo) y conteo real de semáforos
+ * (Overpass / OSM) en un buffer alrededor de la polilínea.
  */
 export async function calcularRutaOSRM(
   origen: Punto,
@@ -61,79 +62,210 @@ export async function calcularRutaOSRM(
   const data = await res.json();
   if (!data.routes?.length) throw new Error("Sin rutas");
 
-  return data.routes.map((r: any) => {
-    const coords: [number, number][] = r.geometry.coordinates.map(
-      ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
-    );
-    const ajuste = ajustarETA(r.distance, r.duration);
-    return {
-      coords,
-      distancia: r.distance,
-      duracionBase: r.duration,
-      duracion: ajuste.duracion,
-      factorTrafico: ajuste.factor,
-      nivelTrafico: ajuste.nivel,
-    };
-  });
+  // Clima compartido para todas las alternativas (1 sola request).
+  const clima = await obtenerClimaCucuta().catch(() => null);
+
+  // Para cada ruta consultamos semáforos reales en paralelo.
+  const enriquecidas = await Promise.all(
+    data.routes.map(async (r: any) => {
+      const coords: [number, number][] = r.geometry.coordinates.map(
+        ([lng, lat]: [number, number]) => [lat, lng] as [number, number],
+      );
+      const semaforos = await contarSemaforosOverpass(coords).catch(() => null);
+      const ajuste = ajustarETA(r.distance, r.duration, semaforos, clima);
+      return {
+        coords,
+        distancia: r.distance,
+        duracionBase: r.duration,
+        duracion: ajuste.duracion,
+        factorTrafico: ajuste.factor,
+        nivelTrafico: ajuste.nivel,
+        semaforos: ajuste.semaforos,
+        densidadSemaforos: ajuste.densidad,
+        penalizacionSemaforosS: ajuste.penalizacionS,
+        clima,
+      } as RutaCalculada;
+    }),
+  );
+
+  return enriquecidas;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Modelo de ETA realista — Waze/Google Maps                         */
+/* ------------------------------------------------------------------ */
+
 /**
- * Modelo de ETA realista tipo Waze / Google Maps.
+ * t_real = t_base · (f_trafico · f_hora · f_clima)  +  Σ penalización_semaforo
  *
- * OSRM devuelve duración en *flujo libre* (vehículo solo, sin semáforos
- * ni congestión). En entornos urbanos como Cúcuta el tiempo real suele
- * ser 1.8x – 3.5x mayor. Aplicamos un modelo multifactor:
+ * - f_trafico:    densidad urbana base (1.6 en Cúcuta)
+ * - f_hora:       hora pico laboral
+ * - f_clima:      derivado de Open-Meteo (lluvia mm/h + temperatura)
+ * - penalización: cada semáforo OSM aporta 18-32 s según densidad y tramo
  *
- *   t_real = t_base · f_trafico · f_hora · f_clima  +  t_semaforos
- *
- * - f_trafico: depende del nivel base por densidad urbana (1.6 base)
- * - f_hora:    factor por hora pico (mañana 6:30-8:30, tarde 17:00-19:30)
- * - f_clima:   placeholder para integración meteorológica (lluvia → +15%)
- * - t_semaforos: penalización por intersecciones (≈ 25 s/km en zona urbana)
- *
- * Esto se documenta en el panel de telemetría como ventaja del proyecto
- * frente a un OSRM crudo.
+ * La penalización NO es un multiplicador plano: depende del número real
+ * de `highway=traffic_signals` dentro del buffer de la polilínea, y se
+ * ajusta por densidad (sem/km) — más densidad ⇒ ondas verdes peor sincronizadas.
  */
-function ajustarETA(distanciaM: number, duracionBaseS: number) {
+function ajustarETA(
+  distanciaM: number,
+  duracionBaseS: number,
+  semaforosReales: number | null,
+  clima: ClimaCucuta | null,
+) {
   const ahora = new Date();
   const hora = ahora.getHours() + ahora.getMinutes() / 60;
-  const diaSemana = ahora.getDay(); // 0 = domingo
+  const diaSemana = ahora.getDay();
 
-  // 1) Factor de tráfico base por densidad urbana de Cúcuta
+  // 1) Tráfico urbano base
   const fTraficoBase = 1.6;
 
-  // 2) Factor hora pico
+  // 2) Hora pico
   let fHora = 1.0;
   const esLaboral = diaSemana >= 1 && diaSemana <= 5;
   if (esLaboral) {
-    if (hora >= 6.5 && hora <= 8.5) fHora = 1.45; // mañana
-    else if (hora >= 11.5 && hora <= 13.5) fHora = 1.25; // almuerzo
-    else if (hora >= 17 && hora <= 19.5) fHora = 1.55; // tarde
-    else if (hora >= 22 || hora <= 5.5) fHora = 0.85; // madrugada
+    if (hora >= 6.5 && hora <= 8.5) fHora = 1.45;
+    else if (hora >= 11.5 && hora <= 13.5) fHora = 1.25;
+    else if (hora >= 17 && hora <= 19.5) fHora = 1.55;
+    else if (hora >= 22 || hora <= 5.5) fHora = 0.85;
   } else {
     if (hora >= 11 && hora <= 14) fHora = 1.2;
     else if (hora >= 19 && hora <= 22) fHora = 1.15;
   }
 
-  // 3) Factor clima (placeholder — se conectará con API meteorológica)
-  const fClima = 1.0;
+  // 3) Clima (Open-Meteo)
+  const fClima = clima?.factorClima ?? 1.0;
 
-  // 4) Penalización por semáforos / intersecciones (≈ 25 s por km urbano)
-  const tSemaforos = (distanciaM / 1000) * 25;
+  // 4) Penalización por intersecciones (modelo no-lineal)
+  // Si Overpass falló: estimación por densidad urbana ≈ 2.2 sem/km
+  const km = distanciaM / 1000;
+  const semaforos = semaforosReales ?? Math.round(km * 2.2);
+  const densidad = km > 0 ? semaforos / km : 0;
+
+  // Costo unitario por semáforo: 18 s base + bonus por congestión local.
+  // densidad alta ⇒ ondas verdes desincronizadas, costo crece logarítmicamente.
+  const costoUnitario = 18 + 14 * Math.min(1, Math.log10(1 + densidad) / 0.6);
+  const penalizacionS = semaforos * costoUnitario;
 
   const factor = fTraficoBase * fHora * fClima;
-  const duracion = duracionBaseS * factor + tSemaforos;
+  const duracion = duracionBaseS * factor + penalizacionS;
 
-  // Velocidad media efectiva (km/h) → clasificación cualitativa
-  const velMedia = distanciaM / 1000 / (duracion / 3600);
+  // Velocidad media efectiva → clasificación cualitativa
+  const velMedia = km > 0 ? km / (duracion / 3600) : 0;
   let nivel: RutaCalculada["nivelTrafico"];
   if (velMedia >= 35) nivel = "libre";
   else if (velMedia >= 22) nivel = "moderado";
   else if (velMedia >= 12) nivel = "pesado";
   else nivel = "congestionado";
 
-  return { duracion, factor, nivel };
+  return { duracion, factor, nivel, semaforos, densidad, penalizacionS };
 }
+
+/* ------------------------------------------------------------------ */
+/*  Overpass — semáforos reales sobre el buffer de la polilínea       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Cuenta `highway=traffic_signals` dentro del bounding-box que envuelve
+ * la polilínea (con margen ~120 m). Usa la instancia pública de Overpass.
+ */
+async function contarSemaforosOverpass(
+  coords: [number, number][],
+): Promise<number> {
+  if (coords.length < 2) return 0;
+  const lats = coords.map((c) => c[0]);
+  const lngs = coords.map((c) => c[1]);
+  const margin = 0.0011; // ~120 m
+  const south = Math.min(...lats) - margin;
+  const north = Math.max(...lats) + margin;
+  const west = Math.min(...lngs) - margin;
+  const east = Math.max(...lngs) + margin;
+
+  const query = `[out:json][timeout:8];
+node["highway"="traffic_signals"](${south},${west},${north},${east});
+out count;`;
+
+  const res = await fetch("https://overpass-api.de/api/interpreter", {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=UTF-8" },
+    body: query,
+  });
+  if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
+  const data = await res.json();
+  // `out count` devuelve un único elemento con tags.nodes
+  const first = data.elements?.[0];
+  const total = parseInt(first?.tags?.nodes ?? "0", 10);
+  return Number.isFinite(total) ? total : 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Open-Meteo — clima en vivo para Cúcuta                            */
+/* ------------------------------------------------------------------ */
+
+let climaCache: { ts: number; data: ClimaCucuta } | null = null;
+const CLIMA_TTL_MS = 10 * 60 * 1000; // 10 min
+
+export async function obtenerClimaCucuta(): Promise<ClimaCucuta> {
+  if (climaCache && Date.now() - climaCache.ts < CLIMA_TTL_MS) {
+    return climaCache.data;
+  }
+  const { lat, lng } = CUCUTA_BOUNDS;
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
+  url.searchParams.set("latitude", String(lat));
+  url.searchParams.set("longitude", String(lng));
+  url.searchParams.set(
+    "current",
+    "temperature_2m,precipitation,weather_code,wind_speed_10m",
+  );
+  url.searchParams.set("timezone", "America/Bogota");
+
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
+  const data = await res.json();
+  const c = data.current ?? {};
+  const lluvia = Number(c.precipitation ?? 0);
+  const temp = Number(c.temperature_2m ?? 28);
+  const viento = Number(c.wind_speed_10m ?? 0);
+  const codigo = Number(c.weather_code ?? 0);
+
+  // Modelo del factor climático f_clima ∈ [1.00, 1.40]
+  // Lluvia es el principal driver; temperaturas extremas y viento añaden marginalmente.
+  let factor = 1.0;
+  if (lluvia >= 7) factor += 0.28;            // lluvia fuerte
+  else if (lluvia >= 2.5) factor += 0.18;     // moderada
+  else if (lluvia >= 0.5) factor += 0.09;     // ligera
+  else if (lluvia > 0) factor += 0.04;        // llovizna
+  if (temp >= 36) factor += 0.04;             // calor extremo (Cúcuta)
+  if (viento >= 35) factor += 0.04;           // ráfagas fuertes
+  factor = Math.min(factor, 1.4);
+
+  const data_: ClimaCucuta = {
+    temperaturaC: temp,
+    lluviaMmH: lluvia,
+    vientoKmH: viento,
+    codigo,
+    descripcion: descripcionWMO(codigo),
+    factorClima: Number(factor.toFixed(3)),
+  };
+  climaCache = { ts: Date.now(), data: data_ };
+  return data_;
+}
+
+function descripcionWMO(code: number): string {
+  if (code === 0) return "Despejado";
+  if ([1, 2].includes(code)) return "Parcial";
+  if (code === 3) return "Nublado";
+  if ([45, 48].includes(code)) return "Niebla";
+  if ([51, 53, 55].includes(code)) return "Llovizna";
+  if ([61, 63, 65].includes(code)) return "Lluvia";
+  if ([66, 67].includes(code)) return "Lluvia helada";
+  if ([71, 73, 75, 77].includes(code)) return "Nieve";
+  if ([80, 81, 82].includes(code)) return "Chubascos";
+  if ([95, 96, 99].includes(code)) return "Tormenta";
+  return "—";
+}
+
+
 
 /**
  * Autocompletado con Nominatim, restringido aproximadamente a Cúcuta.
