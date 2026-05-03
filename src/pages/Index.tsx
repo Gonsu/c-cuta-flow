@@ -1,5 +1,6 @@
 import { PantallaCelular } from "@/components/transit/PantallaCelular";
 import { PhoneFrame } from "@/components/transit/PhoneFrame";
+import ufpsLogo from "@/assets/ufps-logo.png";
 
 const Index = () => {
   return (
