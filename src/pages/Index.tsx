@@ -1,5 +1,6 @@
 import { PantallaCelular } from "@/components/transit/PantallaCelular";
 import { PhoneFrame } from "@/components/transit/PhoneFrame";
+import ufpsLogo from "@/assets/ufps-logo.png";
 
 const Index = () => {
   return (
@@ -7,9 +8,11 @@ const Index = () => {
       {/* Cabecera del mockup */}
       <header className="z-10 flex items-center justify-between border-b border-border bg-surface px-6 py-4 lg:px-10">
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded bg-primary font-mono text-sm font-bold text-primary-foreground">
-            U
-          </div>
+          <img
+            src={ufpsLogo}
+            alt="Logo Universidad Francisco de Paula Santander"
+            className="size-10 rounded object-contain"
+          />
           <div>
             <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
               UFPS Transit
