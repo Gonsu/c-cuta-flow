@@ -1,9 +1,10 @@
 /**
  * BuscadorRuta
- * Buscador con autocompletado real (Nominatim) restringido a Cúcuta.
- * Soporta lugares favoritos (guardar/usar/eliminar).
+ * Inputs editables estilo Google Maps con autocompletado en vivo (Nominatim).
+ * - Escribes directamente en "Desde" o "Hacia" y aparecen sugerencias bajo el campo.
+ * - Soporta favoritos (★) y selección sobre el mapa.
  */
-import { ArrowUpDown, Crosshair, MapPin, Navigation, Loader2, Star, X } from "lucide-react";
+import { ArrowUpDown, Crosshair, MapPin, Loader2, Star, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { buscarLugares, type Punto } from "@/lib/routing";
 import { cn } from "@/lib/utils";
@@ -16,10 +17,8 @@ interface BuscadorRutaProps {
   onInvertir: () => void;
   onPickEnMapa: (campo: "origen" | "destino") => void;
   modoSeleccion: "origen" | "destino" | null;
-  /** Permite abrir el buscador desde un botón externo. */
   abrirEn?: "origen" | "destino" | null;
   onAbiertoConsumido?: () => void;
-  /** Favoritos */
   favoritos?: Punto[];
   esLugarFavorito?: (p: Punto | null) => boolean;
   onToggleFavorito?: (p: Punto) => void;
@@ -50,58 +49,82 @@ export function BuscadorRuta({
   onEliminarFavorito,
 }: BuscadorRutaProps) {
   const [foco, setFoco] = useState<"origen" | "destino" | null>(null);
-  const [query, setQuery] = useState("");
+  const [qOrigen, setQOrigen] = useState("");
+  const [qDestino, setQDestino] = useState("");
   const [resultados, setResultados] = useState<Punto[]>([]);
   const [cargando, setCargando] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const refOrigen = useRef<HTMLInputElement>(null);
+  const refDestino = useRef<HTMLInputElement>(null);
+  const contenedorRef = useRef<HTMLDivElement>(null);
+
+  // Sincronizar texto del input con la selección actual cuando NO está enfocado
+  useEffect(() => {
+    if (foco !== "origen") setQOrigen(origen?.label ?? "");
+  }, [origen, foco]);
+  useEffect(() => {
+    if (foco !== "destino") setQDestino(destino?.label ?? "");
+  }, [destino, foco]);
 
   // Abrir desde control externo (botón "Indicaciones")
   useEffect(() => {
     if (!abrirEn) return;
     setFoco(abrirEn);
-    setQuery("");
     setResultados([]);
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setTimeout(() => {
+      const r = abrirEn === "origen" ? refOrigen : refDestino;
+      r.current?.focus();
+      r.current?.select();
+    }, 50);
     onAbiertoConsumido?.();
   }, [abrirEn, onAbiertoConsumido]);
 
-  // Debounce búsqueda Nominatim
+  // Cerrar dropdown al hacer click afuera
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (!contenedorRef.current?.contains(e.target as Node)) setFoco(null);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  // Debounce búsqueda Nominatim — basado en el campo enfocado
+  const queryActiva = foco === "origen" ? qOrigen : foco === "destino" ? qDestino : "";
   useEffect(() => {
     if (!foco) return;
-    if (query.trim().length < 3) {
+    const q = queryActiva.trim();
+    if (q.length < 2) {
       setResultados([]);
       return;
     }
     setCargando(true);
     const t = setTimeout(async () => {
       try {
-        const r = await buscarLugares(query);
+        const r = await buscarLugares(q);
         setResultados(r);
       } finally {
         setCargando(false);
       }
-    }, 350);
+    }, 250);
     return () => clearTimeout(t);
-  }, [query, foco]);
-
-  const abrir = (campo: "origen" | "destino") => {
-    setFoco(campo);
-    setQuery("");
-    setResultados([]);
-    setTimeout(() => inputRef.current?.focus(), 50);
-  };
+  }, [queryActiva, foco]);
 
   const elegir = (p: Punto) => {
-    if (foco === "origen") onOrigen(p);
-    else if (foco === "destino") onDestino(p);
+    if (foco === "origen") {
+      onOrigen(p);
+      setQOrigen(p.label);
+    } else if (foco === "destino") {
+      onDestino(p);
+      setQDestino(p.label);
+    }
     setFoco(null);
-    setQuery("");
+    setResultados([]);
   };
 
   const lista = resultados.length > 0 ? resultados : SUGERENCIAS_RAPIDAS;
+  const mostrarFavs = favoritos.length > 0 && resultados.length === 0;
 
   return (
-    <div className="absolute inset-x-3 top-3 z-[500]">
+    <div ref={contenedorRef} className="absolute inset-x-3 top-3 z-[500]">
       <div className="overflow-hidden rounded-xl bg-surface shadow-elevated">
         <div className="relative flex items-stretch">
           <div className="flex flex-col items-center justify-center px-3 py-3">
@@ -111,31 +134,35 @@ export function BuscadorRuta({
           </div>
 
           <div className="flex-1 py-2 pr-2">
-            <button
-              onClick={() => abrir("origen")}
-              className="block w-full rounded-md px-2 py-1.5 text-left transition hover:bg-paper"
-            >
+            <div className="rounded-md px-2 py-1">
               <p className="font-mono text-[9px] font-semibold uppercase tracking-wider text-ink-muted">
                 Desde
               </p>
-              <p className="truncate text-sm font-medium text-ink">
-                {origen?.label ?? "Selecciona origen"}
-              </p>
-            </button>
+              <input
+                ref={refOrigen}
+                value={qOrigen}
+                onChange={(e) => setQOrigen(e.target.value)}
+                onFocus={() => setFoco("origen")}
+                placeholder="Selecciona origen"
+                className="w-full bg-transparent text-sm font-medium text-ink outline-none placeholder:text-ink-subtle"
+              />
+            </div>
 
             <div className="my-1 ml-2 h-px bg-border" />
 
-            <button
-              onClick={() => abrir("destino")}
-              className="block w-full rounded-md px-2 py-1.5 text-left transition hover:bg-paper"
-            >
+            <div className="rounded-md px-2 py-1">
               <p className="font-mono text-[9px] font-semibold uppercase tracking-wider text-primary">
                 Hacia
               </p>
-              <p className="truncate text-sm font-semibold text-ink">
-                {destino?.label ?? "Selecciona destino"}
-              </p>
-            </button>
+              <input
+                ref={refDestino}
+                value={qDestino}
+                onChange={(e) => setQDestino(e.target.value)}
+                onFocus={() => setFoco("destino")}
+                placeholder="Selecciona destino"
+                className="w-full bg-transparent text-sm font-semibold text-ink outline-none placeholder:text-ink-subtle"
+              />
+            </div>
           </div>
 
           <button
@@ -149,31 +176,13 @@ export function BuscadorRuta({
 
         {foco && (
           <div className="border-t border-border bg-paper px-2 py-2">
-            <div className="flex items-center gap-2 rounded-md bg-surface px-2.5 py-1.5">
-              {cargando ? (
-                <Loader2 className="size-3.5 animate-spin text-ink-muted" />
-              ) : (
-                <Navigation className="size-3.5 text-ink-muted" />
-              )}
-              <input
-                ref={inputRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={
-                  foco === "origen"
-                    ? "Buscar dirección de origen…"
-                    : "Buscar dirección de destino…"
-                }
-                className="flex-1 bg-transparent text-xs text-ink outline-none placeholder:text-ink-subtle"
-              />
-            </div>
-
             <button
-              onClick={() => {
+              onMouseDown={(e) => {
+                e.preventDefault();
                 onPickEnMapa(foco);
                 setFoco(null);
               }}
-              className={`mt-1.5 flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition ${
+              className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition ${
                 modoSeleccion === foco
                   ? "bg-primary text-primary-foreground"
                   : "bg-surface text-ink hover:bg-border/50"
@@ -183,8 +192,14 @@ export function BuscadorRuta({
               Tocar en el mapa para fijar {foco}
             </button>
 
-            {/* Acceso rápido a favoritos guardados */}
-            {favoritos.length > 0 && resultados.length === 0 && (
+            {cargando && (
+              <div className="mt-2 flex items-center gap-2 px-2 py-1 text-[10px] text-ink-muted">
+                <Loader2 className="size-3 animate-spin" />
+                Buscando…
+              </div>
+            )}
+
+            {mostrarFavs && (
               <>
                 <p className="mt-2 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-primary">
                   ★ Favoritos
@@ -196,7 +211,10 @@ export function BuscadorRuta({
                       className="group flex items-center gap-1 rounded-md hover:bg-surface"
                     >
                       <button
-                        onClick={() => elegir(p)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          elegir(p);
+                        }}
                         className="flex flex-1 items-center gap-2 px-2 py-2 text-left"
                       >
                         <Star className="size-3.5 shrink-0 fill-primary text-primary" />
@@ -204,7 +222,10 @@ export function BuscadorRuta({
                       </button>
                       {onEliminarFavorito && (
                         <button
-                          onClick={() => onEliminarFavorito(p)}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            onEliminarFavorito(p);
+                          }}
                           aria-label="Eliminar favorito"
                           className="px-2 py-1 text-ink-muted opacity-0 transition group-hover:opacity-100 hover:text-ink"
                         >
@@ -218,9 +239,13 @@ export function BuscadorRuta({
             )}
 
             <p className="mt-2 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-ink-muted">
-              {resultados.length > 0 ? "Resultados" : "Lugares populares"}
+              {resultados.length > 0
+                ? "Sugerencias"
+                : queryActiva.trim().length >= 2
+                ? "Sin coincidencias — prueba otra dirección"
+                : "Lugares populares"}
             </p>
-            <ul className="max-h-44 overflow-y-auto">
+            <ul className="max-h-52 overflow-y-auto">
               {lista.map((p) => {
                 const fav = esLugarFavorito?.(p) ?? false;
                 return (
@@ -229,7 +254,10 @@ export function BuscadorRuta({
                     className="group flex items-center gap-1 rounded-md hover:bg-surface"
                   >
                     <button
-                      onClick={() => elegir(p)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        elegir(p);
+                      }}
                       className="flex flex-1 items-center gap-2 px-2 py-2 text-left"
                     >
                       <MapPin className="size-3.5 shrink-0 text-ink-muted" />
@@ -237,25 +265,22 @@ export function BuscadorRuta({
                     </button>
                     {onToggleFavorito && (
                       <button
-                        onClick={() => onToggleFavorito(p)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          onToggleFavorito(p);
+                        }}
                         aria-label={fav ? "Quitar de favoritos" : "Guardar como favorito"}
                         aria-pressed={fav}
                         className="px-2 py-1 text-ink-muted transition hover:text-primary"
                       >
                         <Star
-                          className={cn(
-                            "size-3.5",
-                            fav && "fill-primary text-primary",
-                          )}
+                          className={cn("size-3.5", fav && "fill-primary text-primary")}
                         />
                       </button>
                     )}
                   </li>
                 );
               })}
-              {lista.length === 0 && (
-                <li className="px-2 py-2 text-xs text-ink-muted">Sin resultados.</li>
-              )}
             </ul>
           </div>
         )}
