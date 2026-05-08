@@ -334,11 +334,13 @@ function descripcionWMO(code: number): string {
  * Autocompletado con Nominatim, restringido aproximadamente a Cúcuta.
  */
 export async function buscarLugares(query: string): Promise<Punto[]> {
-  if (query.trim().length < 3) return [];
+  const q = query.trim();
+  if (q.length < 3) return [];
   const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("q", `${query}, Cúcuta, Colombia`);
+  // Buscamos en todo el área metropolitana (Cúcuta, Los Patios, Villa del Rosario).
+  url.searchParams.set("q", `${q}, Área Metropolitana de Cúcuta, Norte de Santander, Colombia`);
   url.searchParams.set("format", "json");
-  url.searchParams.set("limit", "6");
+  url.searchParams.set("limit", "8");
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("viewbox", CUCUTA_VIEWBOX);
   url.searchParams.set("bounded", "1");
@@ -349,11 +351,25 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
   });
   if (!res.ok) return [];
   const data = await res.json();
-  return data.map((d: any) => ({
-    label: prettyLabel(d.display_name),
-    lat: parseFloat(d.lat),
-    lng: parseFloat(d.lon),
-  }));
+  const MUNICIPIOS = ["cúcuta", "cucuta", "los patios", "villa del rosario"];
+  return data
+    .map((d: any) => {
+      const lat = parseFloat(d.lat);
+      const lng = parseFloat(d.lon);
+      const addr = d.address ?? {};
+      const muni = (
+        addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? addr.county ?? ""
+      )
+        .toString()
+        .toLowerCase();
+      const enAMC =
+        dentroDelAMC({ lat, lng }) &&
+        (muni === "" || MUNICIPIOS.some((m) => muni.includes(m)));
+      return enAMC
+        ? { label: prettyLabel(d.display_name), lat, lng }
+        : null;
+    })
+    .filter((p: Punto | null): p is Punto => p !== null);
 }
 
 /**
