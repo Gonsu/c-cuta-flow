@@ -108,6 +108,26 @@ export function BuscadorRuta({
     return () => clearTimeout(t);
   }, [queryActiva, foco]);
 
+  // Limpiar resultados al cambiar de campo (Desde ↔ Hacia)
+  useEffect(() => {
+    setResultados([]);
+    setCargando(false);
+  }, [foco]);
+
+  // Cerrar dropdown con la tecla Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setFoco(null);
+        setResultados([]);
+        refOrigen.current?.blur();
+        refDestino.current?.blur();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const elegir = (p: Punto) => {
     if (foco === "origen") {
       onOrigen(p);
@@ -118,6 +138,15 @@ export function BuscadorRuta({
     }
     setFoco(null);
     setResultados([]);
+  };
+
+  const limpiarCampo = (campo: "origen" | "destino") => {
+    if (campo === "origen") setQOrigen("");
+    else setQDestino("");
+    setResultados([]);
+    setFoco(campo);
+    const r = campo === "origen" ? refOrigen : refDestino;
+    r.current?.focus();
   };
 
   const lista = resultados.length > 0 ? resultados : SUGERENCIAS_RAPIDAS;
@@ -138,14 +167,30 @@ export function BuscadorRuta({
               <p className="font-mono text-[9px] font-semibold uppercase tracking-wider text-ink-muted">
                 Desde
               </p>
-              <input
-                ref={refOrigen}
-                value={qOrigen}
-                onChange={(e) => setQOrigen(e.target.value)}
-                onFocus={() => setFoco("origen")}
-                placeholder="Selecciona origen"
-                className="w-full bg-transparent text-sm font-medium text-ink outline-none placeholder:text-ink-subtle"
-              />
+              <div className="flex items-center gap-1">
+                <input
+                  ref={refOrigen}
+                  value={qOrigen}
+                  onChange={(e) => setQOrigen(e.target.value)}
+                  onFocus={() => setFoco("origen")}
+                  onKeyDown={(e) => e.key === "Escape" && setFoco(null)}
+                  placeholder="Selecciona origen"
+                  className="w-full bg-transparent text-sm font-medium text-ink outline-none placeholder:text-ink-subtle"
+                />
+                {qOrigen && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      limpiarCampo("origen");
+                    }}
+                    aria-label="Limpiar origen"
+                    className="rounded-full p-0.5 text-ink-muted transition hover:bg-border hover:text-ink"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="my-1 ml-2 h-px bg-border" />
@@ -154,14 +199,30 @@ export function BuscadorRuta({
               <p className="font-mono text-[9px] font-semibold uppercase tracking-wider text-primary">
                 Hacia
               </p>
-              <input
-                ref={refDestino}
-                value={qDestino}
-                onChange={(e) => setQDestino(e.target.value)}
-                onFocus={() => setFoco("destino")}
-                placeholder="Selecciona destino"
-                className="w-full bg-transparent text-sm font-semibold text-ink outline-none placeholder:text-ink-subtle"
-              />
+              <div className="flex items-center gap-1">
+                <input
+                  ref={refDestino}
+                  value={qDestino}
+                  onChange={(e) => setQDestino(e.target.value)}
+                  onFocus={() => setFoco("destino")}
+                  onKeyDown={(e) => e.key === "Escape" && setFoco(null)}
+                  placeholder="Selecciona destino"
+                  className="w-full bg-transparent text-sm font-semibold text-ink outline-none placeholder:text-ink-subtle"
+                />
+                {qDestino && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      limpiarCampo("destino");
+                    }}
+                    aria-label="Limpiar destino"
+                    className="rounded-full p-0.5 text-ink-muted transition hover:bg-border hover:text-ink"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

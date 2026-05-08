@@ -14,9 +14,11 @@ import { useFavoritos } from "@/hooks/useFavoritos";
 import {
   calcularRutaOSRM,
   reverseGeocode,
+  dentroDelAMC,
   type Punto,
   type RutaCalculada,
 } from "@/lib/routing";
+import { toast } from "sonner";
 
 const ORIGEN_DEFAULT: Punto = {
   label: "Ventura Plaza · Centro Comercial",
@@ -104,6 +106,12 @@ export function PantallaCelular() {
     if (!modoSeleccion) return;
     const campo = modoSeleccion;
     setModoSeleccion(null);
+    if (!dentroDelAMC({ lat, lng })) {
+      toast.error("Punto fuera del área metropolitana", {
+        description: "Solo se permiten ubicaciones en Cúcuta, Los Patios o Villa del Rosario.",
+      });
+      return;
+    }
     const provisional: Punto = {
       label: `Punto ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
       lat,
