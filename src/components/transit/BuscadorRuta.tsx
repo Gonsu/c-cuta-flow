@@ -108,6 +108,26 @@ export function BuscadorRuta({
     return () => clearTimeout(t);
   }, [queryActiva, foco]);
 
+  // Limpiar resultados al cambiar de campo (Desde ↔ Hacia)
+  useEffect(() => {
+    setResultados([]);
+    setCargando(false);
+  }, [foco]);
+
+  // Cerrar dropdown con la tecla Escape
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setFoco(null);
+        setResultados([]);
+        refOrigen.current?.blur();
+        refDestino.current?.blur();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
   const elegir = (p: Punto) => {
     if (foco === "origen") {
       onOrigen(p);
@@ -118,6 +138,15 @@ export function BuscadorRuta({
     }
     setFoco(null);
     setResultados([]);
+  };
+
+  const limpiarCampo = (campo: "origen" | "destino") => {
+    if (campo === "origen") setQOrigen("");
+    else setQDestino("");
+    setResultados([]);
+    setFoco(campo);
+    const r = campo === "origen" ? refOrigen : refDestino;
+    r.current?.focus();
   };
 
   const lista = resultados.length > 0 ? resultados : SUGERENCIAS_RAPIDAS;
