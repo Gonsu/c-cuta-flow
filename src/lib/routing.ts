@@ -41,8 +41,22 @@ export interface RutaCalculada {
   clima: ClimaCucuta | null;
 }
 
-const CUCUTA_VIEWBOX = "-72.58,7.95,-72.45,7.84"; // lon_min,lat_max,lon_max,lat_min
+// Área Metropolitana de Cúcuta: Cúcuta + Los Patios + Villa del Rosario.
+// Formato Nominatim viewbox: lon_min,lat_max,lon_max,lat_min
+const CUCUTA_VIEWBOX = "-72.60,7.99,-72.42,7.77";
+// Bounding-box estricto para validar coordenadas dentro del AMC
+export const AMC_BBOX = { south: 7.77, north: 7.99, west: -72.60, east: -72.42 };
 const CUCUTA_BOUNDS = { lat: 7.8939, lng: -72.5078 };
+
+/** Verifica si un punto cae dentro del área metropolitana de Cúcuta. */
+export function dentroDelAMC(p: { lat: number; lng: number }): boolean {
+  return (
+    p.lat >= AMC_BBOX.south &&
+    p.lat <= AMC_BBOX.north &&
+    p.lng >= AMC_BBOX.west &&
+    p.lng <= AMC_BBOX.east
+  );
+}
 
 export interface OpcionesRuta {
   alternativas?: boolean;
