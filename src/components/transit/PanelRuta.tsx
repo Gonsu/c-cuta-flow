@@ -227,40 +227,42 @@ export function PanelRuta({
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-border bg-paper py-2.5 text-center">
-            <Mini icono={<Route className="size-3.5" />} label="Distancia" valor={formatoDist(distanciaM)} />
-            <Mini
-              icono={<Clock className="size-3.5" />}
-              label="Tráfico"
-              valor={traficoLabel}
-              acento={traficoColor}
-            />
-            <Mini
-              icono={
-                clima && clima.lluviaMmH > 0 ? (
-                  <CloudRain className="size-3.5" />
-                ) : (
-                  <span className="text-sm">☀</span>
-                )
-              }
-              label="Clima"
-              valor={
-                clima
-                  ? `${Math.round(clima.temperaturaC)}°${
-                      clima.lluviaMmH > 0
-                        ? ` · ${clima.lluviaMmH.toFixed(1).replace(".", ",")}mm`
-                        : ""
-                    }`
-                  : "—"
-              }
-              acento={
-                clima && clima.lluviaMmH >= 2.5 ? "text-primary" : undefined
-              }
-            />
-          </div>
+          {mostrarDatos && (
+            <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-border bg-paper py-2.5 text-center">
+              <Mini icono={<Route className="size-3.5" />} label="Distancia" valor={formatoDist(distanciaM)} />
+              <Mini
+                icono={<Clock className="size-3.5" />}
+                label="Tráfico"
+                valor={traficoLabel}
+                acento={traficoColor}
+              />
+              <Mini
+                icono={
+                  clima && clima.lluviaMmH > 0 ? (
+                    <CloudRain className="size-3.5" />
+                  ) : (
+                    <span className="text-sm">☀</span>
+                  )
+                }
+                label="Clima"
+                valor={
+                  clima
+                    ? `${Math.round(clima.temperaturaC)}°${
+                        clima.lluviaMmH > 0
+                          ? ` · ${clima.lluviaMmH.toFixed(1).replace(".", ",")}mm`
+                          : ""
+                      }`
+                    : "—"
+                }
+                acento={
+                  clima && clima.lluviaMmH >= 2.5 ? "text-primary" : undefined
+                }
+              />
+            </div>
+          )}
 
           {/* Comparativa: flujo libre vs ETA real */}
-          {duracionBaseS != null && duracionS != null && factorTrafico != null && (
+          {mostrarDatos && duracionBaseS != null && duracionS != null && factorTrafico != null && (
             <div className="mt-2 flex items-center justify-between rounded-lg border border-dashed border-border bg-paper px-3 py-2">
               <div>
                 <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
