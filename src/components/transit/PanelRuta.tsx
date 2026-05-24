@@ -566,10 +566,44 @@ export function PanelRuta({
             </p>
           )}
 
-          <button className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-card transition hover:bg-primary-dark active:scale-[0.99]">
-            <Navigation className="size-4" />
-            Iniciar navegación
-          </button>
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+            <button
+              onClick={navegando ? onDetenerNavegacion : onIniciarNavegacion}
+              disabled={!tieneRuta && !navegando}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold shadow-card transition active:scale-[0.99]",
+                navegando
+                  ? "bg-traffic-heavy text-paper hover:opacity-90"
+                  : "bg-primary text-primary-foreground hover:bg-primary-dark",
+                !tieneRuta && !navegando && "opacity-50 cursor-not-allowed",
+              )}
+            >
+              {navegando ? (
+                <>
+                  <Square className="size-4 fill-current" />
+                  Detener navegación
+                </>
+              ) : (
+                <>
+                  <Navigation className="size-4" />
+                  Iniciar navegación
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => onMostrarDatos(!mostrarDatos)}
+              aria-pressed={mostrarDatos}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-lg border px-3 py-3 text-xs font-semibold transition",
+                mostrarDatos
+                  ? "border-ink bg-ink text-paper"
+                  : "border-border bg-paper text-ink hover:bg-surface",
+              )}
+            >
+              <BarChart3 className="size-4" />
+              Datos
+            </button>
+          </div>
 
           {/* Botón desplegar telemetría */}
           <button
