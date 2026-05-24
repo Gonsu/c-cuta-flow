@@ -506,7 +506,8 @@ export function PanelRuta({
           )}
 
           {/* Comparación directa: ruta normal vs evitando semáforos */}
-          {evitarSemaforos &&
+          {mostrarDatos &&
+            evitarSemaforos &&
             comparacionEvitar &&
             duracionS != null &&
             semaforos != null && (
