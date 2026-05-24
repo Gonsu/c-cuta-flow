@@ -5,6 +5,7 @@
  * "Preferir evitar semáforos" con comparación directa vs ruta normal.
  */
 import {
+  BarChart3,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -13,6 +14,7 @@ import {
   Navigation,
   Radio,
   Route,
+  Square,
   TrafficCone,
   TrafficCone as ConeIcon,
 } from "lucide-react";
