@@ -62,6 +62,13 @@ interface PanelRutaProps {
   esRutaFavorita: boolean;
   onToggleFavorita: () => void;
   puedeAgregarFavorita: boolean;
+  // Navegación en vivo (GPS device)
+  navegando: boolean;
+  onIniciarNavegacion: () => void;
+  onDetenerNavegacion: () => void;
+  // Mostrar/ocultar bloque de datos (distancia, tráfico, clima, semáforos)
+  mostrarDatos: boolean;
+  onMostrarDatos: (v: boolean) => void;
 }
 
 function formatoDist(m: number | null) {
