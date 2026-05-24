@@ -50,6 +50,13 @@ export function PantallaCelular() {
   const [intervaloMs, setIntervaloMs] = useState<number>(60_000);
   const [evitarSemaforos, setEvitarSemaforos] = useState(false);
 
+  // Navegación turn-by-turn con geolocalización del dispositivo
+  const [navegando, setNavegando] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
+
+  // Mostrar/ocultar bloque de datos (distancia, tráfico, clima, semáforos)
+  const [mostrarDatos, setMostrarDatos] = useState(false);
+
   // Capas + ubicación + abrir buscador
   const [capa, setCapa] = useState<Capa>("estandar");
   const [menuCapas, setMenuCapas] = useState(false);
@@ -70,6 +77,55 @@ export function PantallaCelular() {
     error,
     ultimaActualizacion,
   } = useRuta(origen, destino, { evitarSemaforos, live: enVivo, liveIntervalMs: intervaloMs });
+
+  const iniciarNavegacion = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocalización no disponible en este dispositivo");
+      return;
+    }
+    if (!destino) {
+      toast.error("Selecciona un destino antes de iniciar la navegación");
+      return;
+    }
+    setNavegando(true);
+    setEnVivo(true);
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setUbicacion({ lat: latitude, lng: longitude });
+        if (dentroDelAMC({ lat: latitude, lng: longitude })) {
+          setOrigen({ label: "Tu ubicación", lat: latitude, lng: longitude });
+          mapaRef.current?.flyToSafe?.(latitude, longitude);
+        }
+      },
+      (err) => {
+        toast.error("No se pudo obtener tu ubicación", { description: err.message });
+        detenerNavegacion();
+      },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 },
+    );
+    watchIdRef.current = id;
+    toast.success("Navegación iniciada", {
+      description: "Siguiendo tu ubicación en tiempo real",
+    });
+  };
+
+  const detenerNavegacion = () => {
+    if (watchIdRef.current != null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+    watchIdRef.current = null;
+    setNavegando(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current != null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
 
   // Comparación "ruta normal" vs "evitando semáforos":
   // mantenemos en estado la versión normal para compararla con la actual.
