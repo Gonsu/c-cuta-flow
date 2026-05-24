@@ -5,6 +5,7 @@
  * "Preferir evitar semáforos" con comparación directa vs ruta normal.
  */
 import {
+  BarChart3,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -13,6 +14,7 @@ import {
   Navigation,
   Radio,
   Route,
+  Square,
   TrafficCone,
   TrafficCone as ConeIcon,
 } from "lucide-react";
@@ -60,6 +62,13 @@ interface PanelRutaProps {
   esRutaFavorita: boolean;
   onToggleFavorita: () => void;
   puedeAgregarFavorita: boolean;
+  // Navegación en vivo (GPS device)
+  navegando: boolean;
+  onIniciarNavegacion: () => void;
+  onDetenerNavegacion: () => void;
+  // Mostrar/ocultar bloque de datos (distancia, tráfico, clima, semáforos)
+  mostrarDatos: boolean;
+  onMostrarDatos: (v: boolean) => void;
 }
 
 function formatoDist(m: number | null) {
@@ -132,6 +141,11 @@ export function PanelRuta({
   esRutaFavorita,
   onToggleFavorita,
   puedeAgregarFavorita,
+  navegando,
+  onIniciarNavegacion,
+  onDetenerNavegacion,
+  mostrarDatos,
+  onMostrarDatos,
 }: PanelRutaProps) {
   const [expandido, setExpandido] = useState(false);
   const m = METRICAS[algoritmo];
@@ -213,40 +227,42 @@ export function PanelRuta({
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-border bg-paper py-2.5 text-center">
-            <Mini icono={<Route className="size-3.5" />} label="Distancia" valor={formatoDist(distanciaM)} />
-            <Mini
-              icono={<Clock className="size-3.5" />}
-              label="Tráfico"
-              valor={traficoLabel}
-              acento={traficoColor}
-            />
-            <Mini
-              icono={
-                clima && clima.lluviaMmH > 0 ? (
-                  <CloudRain className="size-3.5" />
-                ) : (
-                  <span className="text-sm">☀</span>
-                )
-              }
-              label="Clima"
-              valor={
-                clima
-                  ? `${Math.round(clima.temperaturaC)}°${
-                      clima.lluviaMmH > 0
-                        ? ` · ${clima.lluviaMmH.toFixed(1).replace(".", ",")}mm`
-                        : ""
-                    }`
-                  : "—"
-              }
-              acento={
-                clima && clima.lluviaMmH >= 2.5 ? "text-primary" : undefined
-              }
-            />
-          </div>
+          {mostrarDatos && (
+            <div className="mt-3 grid grid-cols-3 gap-2 rounded-lg border border-border bg-paper py-2.5 text-center">
+              <Mini icono={<Route className="size-3.5" />} label="Distancia" valor={formatoDist(distanciaM)} />
+              <Mini
+                icono={<Clock className="size-3.5" />}
+                label="Tráfico"
+                valor={traficoLabel}
+                acento={traficoColor}
+              />
+              <Mini
+                icono={
+                  clima && clima.lluviaMmH > 0 ? (
+                    <CloudRain className="size-3.5" />
+                  ) : (
+                    <span className="text-sm">☀</span>
+                  )
+                }
+                label="Clima"
+                valor={
+                  clima
+                    ? `${Math.round(clima.temperaturaC)}°${
+                        clima.lluviaMmH > 0
+                          ? ` · ${clima.lluviaMmH.toFixed(1).replace(".", ",")}mm`
+                          : ""
+                      }`
+                    : "—"
+                }
+                acento={
+                  clima && clima.lluviaMmH >= 2.5 ? "text-primary" : undefined
+                }
+              />
+            </div>
+          )}
 
           {/* Comparativa: flujo libre vs ETA real */}
-          {duracionBaseS != null && duracionS != null && factorTrafico != null && (
+          {mostrarDatos && duracionBaseS != null && duracionS != null && factorTrafico != null && (
             <div className="mt-2 flex items-center justify-between rounded-lg border border-dashed border-border bg-paper px-3 py-2">
               <div>
                 <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
@@ -263,7 +279,7 @@ export function PanelRuta({
           )}
 
           {/* Desglose de penalizaciones (semáforos + clima) */}
-          {(semaforos != null || clima) && (
+          {mostrarDatos && (semaforos != null || clima) && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               {semaforos != null && (
                 <div className="rounded-lg border border-border bg-paper p-2.5">
@@ -455,8 +471,9 @@ export function PanelRuta({
             </button>
           </div>
 
-          {/* Selector de intervalo de refresco (solo si modo en vivo activo) */}
-          {enVivo && (
+          {/* Selector de intervalo de refresco — siempre visible */}
+          {(
+
             <div className="mt-2 flex items-center justify-between rounded-lg border border-border bg-paper px-3 py-2">
               <div>
                 <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
@@ -489,7 +506,8 @@ export function PanelRuta({
           )}
 
           {/* Comparación directa: ruta normal vs evitando semáforos */}
-          {evitarSemaforos &&
+          {mostrarDatos &&
+            evitarSemaforos &&
             comparacionEvitar &&
             duracionS != null &&
             semaforos != null && (
@@ -548,10 +566,44 @@ export function PanelRuta({
             </p>
           )}
 
-          <button className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground shadow-card transition hover:bg-primary-dark active:scale-[0.99]">
-            <Navigation className="size-4" />
-            Iniciar navegación
-          </button>
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+            <button
+              onClick={navegando ? onDetenerNavegacion : onIniciarNavegacion}
+              disabled={!tieneRuta && !navegando}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold shadow-card transition active:scale-[0.99]",
+                navegando
+                  ? "bg-traffic-heavy text-paper hover:opacity-90"
+                  : "bg-primary text-primary-foreground hover:bg-primary-dark",
+                !tieneRuta && !navegando && "opacity-50 cursor-not-allowed",
+              )}
+            >
+              {navegando ? (
+                <>
+                  <Square className="size-4 fill-current" />
+                  Detener navegación
+                </>
+              ) : (
+                <>
+                  <Navigation className="size-4" />
+                  Iniciar navegación
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => onMostrarDatos(!mostrarDatos)}
+              aria-pressed={mostrarDatos}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-lg border px-3 py-3 text-xs font-semibold transition",
+                mostrarDatos
+                  ? "border-ink bg-ink text-paper"
+                  : "border-border bg-paper text-ink hover:bg-surface",
+              )}
+            >
+              <BarChart3 className="size-4" />
+              Datos
+            </button>
+          </div>
 
           {/* Botón desplegar telemetría */}
           <button
