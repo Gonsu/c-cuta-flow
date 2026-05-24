@@ -173,7 +173,13 @@ export function BuscadorRuta({
                   value={qOrigen}
                   onChange={(e) => setQOrigen(e.target.value)}
                   onFocus={() => setFoco("origen")}
-                  onKeyDown={(e) => e.key === "Escape" && setFoco(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setFoco(null);
+                    if (e.key === "Enter" && resultados[0]) {
+                      e.preventDefault();
+                      elegir(resultados[0]);
+                    }
+                  }}
                   placeholder="Selecciona origen"
                   className="w-full bg-transparent text-sm font-medium text-ink outline-none placeholder:text-ink-subtle"
                 />
