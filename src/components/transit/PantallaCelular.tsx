@@ -95,8 +95,8 @@ export function PantallaCelular() {
         setUbicacion({ lat: latitude, lng: longitude });
         if (dentroDelAMC({ lat: latitude, lng: longitude })) {
           setOrigen({ label: "Tu ubicación", lat: latitude, lng: longitude });
-          mapaRef.current?.flyToSafe?.(latitude, longitude);
         }
+
       },
       (err) => {
         toast.error("No se pudo obtener tu ubicación", { description: err.message });
