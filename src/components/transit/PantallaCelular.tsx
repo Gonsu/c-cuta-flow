@@ -436,6 +436,11 @@ export function PantallaCelular() {
           if (origen && destino) favs.toggleRuta(origen, destino);
         }}
         puedeAgregarFavorita={!!origen && !!destino}
+        navegando={navegando}
+        onIniciarNavegacion={iniciarNavegacion}
+        onDetenerNavegacion={detenerNavegacion}
+        mostrarDatos={mostrarDatos}
+        onMostrarDatos={setMostrarDatos}
       />
     </div>
   );
