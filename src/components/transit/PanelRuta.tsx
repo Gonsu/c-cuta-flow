@@ -141,6 +141,11 @@ export function PanelRuta({
   esRutaFavorita,
   onToggleFavorita,
   puedeAgregarFavorita,
+  navegando,
+  onIniciarNavegacion,
+  onDetenerNavegacion,
+  mostrarDatos,
+  onMostrarDatos,
 }: PanelRutaProps) {
   const [expandido, setExpandido] = useState(false);
   const m = METRICAS[algoritmo];
