@@ -211,7 +211,13 @@ export function BuscadorRuta({
                   value={qDestino}
                   onChange={(e) => setQDestino(e.target.value)}
                   onFocus={() => setFoco("destino")}
-                  onKeyDown={(e) => e.key === "Escape" && setFoco(null)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setFoco(null);
+                    if (e.key === "Enter" && resultados[0]) {
+                      e.preventDefault();
+                      elegir(resultados[0]);
+                    }
+                  }}
                   placeholder="Selecciona destino"
                   className="w-full bg-transparent text-sm font-semibold text-ink outline-none placeholder:text-ink-subtle"
                 />
