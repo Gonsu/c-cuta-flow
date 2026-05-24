@@ -471,8 +471,9 @@ export function PanelRuta({
             </button>
           </div>
 
-          {/* Selector de intervalo de refresco (solo si modo en vivo activo) */}
-          {enVivo && (
+          {/* Selector de intervalo de refresco — siempre visible */}
+          {(
+
             <div className="mt-2 flex items-center justify-between rounded-lg border border-border bg-paper px-3 py-2">
               <div>
                 <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
