@@ -279,7 +279,7 @@ export function PanelRuta({
           )}
 
           {/* Desglose de penalizaciones (semáforos + clima) */}
-          {(semaforos != null || clima) && (
+          {mostrarDatos && (semaforos != null || clima) && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               {semaforos != null && (
                 <div className="rounded-lg border border-border bg-paper p-2.5">
