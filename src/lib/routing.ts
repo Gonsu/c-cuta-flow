@@ -329,47 +329,119 @@ function descripcionWMO(code: number): string {
 }
 
 
+/* ------------------------------------------------------------------ */
+/*  Geocodificación — Nominatim con normalización de direcciones CO    */
+/* ------------------------------------------------------------------ */
+
+const MUNICIPIOS_AMC = ["cúcuta", "cucuta", "los patios", "villa del rosario"];
 
 /**
- * Autocompletado con Nominatim, restringido aproximadamente a Cúcuta.
+ * Normaliza direcciones colombianas a un formato que Nominatim entiende mejor.
+ *   "cl 4n #7e-30 los pinos"  →  "Calle 4 Norte 7E 30 los pinos"
+ *   "cra 12 #5-20"            →  "Carrera 12 5 20"
+ *   "av 0 #10-15"             →  "Avenida 0 10 15"
+ */
+function normalizarDireccionCO(q: string): string {
+  let s = " " + q.toLowerCase().trim() + " ";
+  // tipos de vía abreviados
+  s = s.replace(/\b(cl|cll|calle)\b\.?/g, "calle");
+  s = s.replace(/\b(cra|kra|carr|carrera|kr)\b\.?/g, "carrera");
+  s = s.replace(/\b(av|avda|avenida)\b\.?/g, "avenida");
+  s = s.replace(/\b(diag|diagonal)\b\.?/g, "diagonal");
+  s = s.replace(/\b(trans|transv|transversal)\b\.?/g, "transversal");
+  // número + sufijo cardinal: "4n" → "4 norte", "7e" → "7 este"
+  s = s.replace(/(\d+)\s*n\b/g, "$1 norte");
+  s = s.replace(/(\d+)\s*s\b/g, "$1 sur");
+  s = s.replace(/(\d+)\s*e\b/g, "$1 este");
+  s = s.replace(/(\d+)\s*o\b/g, "$1 oeste");
+  // separadores típicos #, No., nro
+  s = s.replace(/#|n[ºo°]\.?|nro\.?|num\.?/g, " ");
+  // guion entre números: "30-15" → "30 15"
+  s = s.replace(/(\d)\s*-\s*(\d)/g, "$1 $2");
+  // espacios extras
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+/** Lanza una consulta a Nominatim y devuelve resultados crudos. */
+async function nominatimSearch(
+  q: string,
+  opts: { bounded?: boolean; limit?: number } = {},
+): Promise<any[]> {
+  const { bounded = true, limit = 8 } = opts;
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("q", q);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("viewbox", CUCUTA_VIEWBOX);
+  if (bounded) url.searchParams.set("bounded", "1");
+  url.searchParams.set("countrycodes", "co");
+  try {
+    const res = await fetch(url.toString(), {
+      headers: { "Accept-Language": "es" },
+    });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Autocompletado con Nominatim, restringido al AMC de Cúcuta.
+ * Lanza varias variantes en paralelo (cruda + normalizada + con ciudad)
+ * para tolerar formatos colombianos tipo "Cl 4N #7e-30 Los Pinos".
  */
 export async function buscarLugares(query: string): Promise<Punto[]> {
   const q = query.trim();
   if (q.length < 3) return [];
-  const url = new URL("https://nominatim.openstreetmap.org/search");
-  // Buscamos en todo el área metropolitana (Cúcuta, Los Patios, Villa del Rosario).
-  url.searchParams.set("q", `${q}, Área Metropolitana de Cúcuta, Norte de Santander, Colombia`);
-  url.searchParams.set("format", "json");
-  url.searchParams.set("limit", "8");
-  url.searchParams.set("addressdetails", "1");
-  url.searchParams.set("viewbox", CUCUTA_VIEWBOX);
-  url.searchParams.set("bounded", "1");
-  url.searchParams.set("countrycodes", "co");
 
-  const res = await fetch(url.toString(), {
-    headers: { "Accept-Language": "es" },
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  const MUNICIPIOS = ["cúcuta", "cucuta", "los patios", "villa del rosario"];
-  return data
-    .map((d: any) => {
-      const lat = parseFloat(d.lat);
-      const lng = parseFloat(d.lon);
-      const addr = d.address ?? {};
-      const muni = (
-        addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? addr.county ?? ""
-      )
-        .toString()
-        .toLowerCase();
-      const enAMC =
-        dentroDelAMC({ lat, lng }) &&
-        (muni === "" || MUNICIPIOS.some((m) => muni.includes(m)));
-      return enAMC
-        ? { label: prettyLabel(d.display_name), lat, lng }
-        : null;
-    })
-    .filter((p: Punto | null): p is Punto => p !== null);
+  const normalizada = normalizarDireccionCO(q);
+  const variantes = new Set<string>([
+    `${q}, Cúcuta, Norte de Santander, Colombia`,
+    `${normalizada}, Cúcuta, Norte de Santander, Colombia`,
+    `${normalizada}, Área Metropolitana de Cúcuta, Colombia`,
+  ]);
+
+  // Ejecutar variantes en paralelo (acotadas) y, en paralelo,
+  // una variante sin bounded para tolerar coincidencias parciales.
+  const promesas: Promise<any[]>[] = [];
+  for (const v of variantes) promesas.push(nominatimSearch(v, { bounded: true }));
+  promesas.push(nominatimSearch(`${normalizada}, Cúcuta`, { bounded: false, limit: 6 }));
+
+  const lotes = await Promise.all(promesas);
+  const crudos = lotes.flat();
+
+  // Deduplicar por osm_id / coordenadas y filtrar dentro del AMC.
+  const vistos = new Set<string>();
+  const resultados: Punto[] = [];
+  for (const d of crudos) {
+    const lat = parseFloat(d.lat);
+    const lng = parseFloat(d.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    if (!dentroDelAMC({ lat, lng })) continue;
+    const addr = d.address ?? {};
+    const muni = (
+      addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? addr.county ?? ""
+    )
+      .toString()
+      .toLowerCase();
+    if (muni && !MUNICIPIOS_AMC.some((m) => muni.includes(m))) continue;
+    const key =
+      d.osm_id != null
+        ? `${d.osm_type}-${d.osm_id}`
+        : `${lat.toFixed(5)}-${lng.toFixed(5)}`;
+    if (vistos.has(key)) continue;
+    vistos.add(key);
+    resultados.push({
+      label: formatearDireccion(d, q),
+      lat,
+      lng,
+    });
+    if (resultados.length >= 10) break;
+  }
+  return resultados;
 }
 
 /**
@@ -381,19 +453,38 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   url.searchParams.set("lon", String(lng));
   url.searchParams.set("format", "json");
   url.searchParams.set("zoom", "17");
+  url.searchParams.set("addressdetails", "1");
   const res = await fetch(url.toString(), {
     headers: { "Accept-Language": "es" },
   });
   if (!res.ok) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   const data = await res.json();
-  return prettyLabel(data.display_name ?? "");
+  return formatearDireccion(data, "");
 }
 
-function prettyLabel(full: string): string {
-  // "Calle 12, Centro, Cúcuta, Norte de Santander, ..."  →  "Calle 12 · Centro"
-  const parts = full.split(",").map((s) => s.trim());
-  if (parts.length >= 2) return `${parts[0]} · ${parts[1]}`;
-  return parts[0] ?? full;
+/**
+ * Construye una etiqueta tipo Google Maps:
+ *   "Cl. 4 Nte. #7E-30 · Br. Los Pinos · Cúcuta"
+ */
+function formatearDireccion(d: any, _consulta: string): string {
+  const addr = d.address ?? {};
+  const via =
+    addr.road ?? addr.pedestrian ?? addr.footway ?? addr.residential ?? "";
+  const numero = addr.house_number ?? "";
+  const barrio =
+    addr.suburb ?? addr.neighbourhood ?? addr.quarter ?? addr.city_district ?? "";
+  const ciudad =
+    addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? "";
+  const partes: string[] = [];
+  if (via) partes.push(numero ? `${via} #${numero}` : via);
+  else if (d.name) partes.push(d.name);
+  if (barrio) partes.push(barrio);
+  if (ciudad) partes.push(ciudad);
+  if (partes.length === 0) {
+    const raw = (d.display_name ?? "").split(",").map((s: string) => s.trim());
+    return raw.slice(0, 2).join(" · ");
+  }
+  return partes.join(" · ");
 }
 
 export const CUCUTA_CENTER = CUCUTA_BOUNDS;
