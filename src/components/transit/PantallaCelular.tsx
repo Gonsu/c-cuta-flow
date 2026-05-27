@@ -192,6 +192,20 @@ export function PantallaCelular() {
     setMenuCapas(false);
   };
 
+  // Modo "solo ruta": durante la navegación con Datos OFF ocultamos
+  // todos los paneles secundarios (buscador, favoritas, capas, etc.)
+  // y dejamos únicamente mapa + ruta + marcador.
+  const soloRuta = navegando && !mostrarDatos;
+
+  // Cierra paneles secundarios al entrar en modo solo-ruta.
+  useEffect(() => {
+    if (soloRuta) {
+      setPanelFavoritas(false);
+      setMenuCapas(false);
+      setAbrirBuscadorEn(null);
+    }
+  }, [soloRuta]);
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-paper">
       {/* Status bar */}
@@ -213,9 +227,9 @@ export function PantallaCelular() {
           origen={origen}
           destino={destino}
           rutaPrincipal={principal?.coords ?? null}
-          rutaAlterna={alterna?.coords ?? null}
+          rutaAlterna={soloRuta ? null : alterna?.coords ?? null}
           rutaComparacion={
-            evitarSemaforos && normalParaComparar
+            !soloRuta && evitarSemaforos && normalParaComparar
               ? { coords: normalParaComparar.coords, color: "#94a3b8", weight: 5, dashed: true }
               : null
           }
@@ -226,24 +240,26 @@ export function PantallaCelular() {
         />
       </div>
 
-      {/* Buscador */}
-      <div className="pt-7">
-        <BuscadorRuta
-          origen={origen}
-          destino={destino}
-          onOrigen={setOrigen}
-          onDestino={setDestino}
-          onInvertir={invertir}
-          onPickEnMapa={setModoSeleccion}
-          modoSeleccion={modoSeleccion}
-          abrirEn={abrirBuscadorEn}
-          onAbiertoConsumido={() => setAbrirBuscadorEn(null)}
-          favoritos={favs.lugares}
-          esLugarFavorito={favs.esLugarFavorito}
-          onToggleFavorito={favs.toggleLugar}
-          onEliminarFavorito={favs.eliminarLugar}
-        />
-      </div>
+      {/* Buscador — oculto en modo solo-ruta */}
+      {!soloRuta && (
+        <div className="pt-7">
+          <BuscadorRuta
+            origen={origen}
+            destino={destino}
+            onOrigen={setOrigen}
+            onDestino={setDestino}
+            onInvertir={invertir}
+            onPickEnMapa={setModoSeleccion}
+            modoSeleccion={modoSeleccion}
+            abrirEn={abrirBuscadorEn}
+            onAbiertoConsumido={() => setAbrirBuscadorEn(null)}
+            favoritos={favs.lugares}
+            esLugarFavorito={favs.esLugarFavorito}
+            onToggleFavorito={favs.toggleLugar}
+            onEliminarFavorito={favs.eliminarLugar}
+          />
+        </div>
+      )}
 
       {/* Indicador modo selección */}
       {modoSeleccion && (
@@ -252,47 +268,49 @@ export function PantallaCelular() {
         </div>
       )}
 
-      {/* Indicador "en vivo" */}
+      {/* Indicador "en vivo" / "Navegando" */}
       {enVivo && (
-        <div className="absolute left-3 top-44 z-[550] flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 shadow-elevated">
+        <div className={`absolute left-3 z-[550] flex items-center gap-1.5 rounded-full bg-surface px-2.5 py-1 shadow-elevated ${soloRuta ? "top-10" : "top-44"}`}>
           <span className="size-1.5 animate-pulse rounded-full bg-traffic-mid" />
           <span className="font-mono text-[9px] font-semibold uppercase tracking-wider text-ink">
-            En vivo
+            {navegando ? "Navegando" : "En vivo"}
           </span>
         </div>
       )}
 
-      {/* Botones flotantes — capas + ubicación */}
-      <div className="absolute right-3 top-44 z-[500] flex flex-col gap-2">
-        <div className="relative">
-          <button
-            onClick={() => setMenuCapas((v) => !v)}
-            className={`flex size-10 items-center justify-center rounded-full shadow-elevated transition ${
-              menuCapas ? "bg-ink text-paper" : "bg-surface text-ink hover:bg-paper"
-            }`}
-            aria-label="Cambiar capa"
-          >
-            <Layers className="size-4" />
-          </button>
-          {menuCapas && (
-            <div className="absolute right-12 top-0 w-44 overflow-hidden rounded-lg border border-border bg-surface shadow-elevated">
-              {CAPAS_OPCIONES.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => cambiarCapa(c.id)}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition ${
-                    capa === c.id
-                      ? "bg-primary-light/40 font-semibold text-primary-dark"
-                      : "text-ink hover:bg-paper"
-                  }`}
-                >
-                  {c.icono}
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Botones flotantes — capas + ubicación + favoritas */}
+      <div className={`absolute right-3 z-[500] flex flex-col gap-2 ${soloRuta ? "top-10" : "top-44"}`}>
+        {!soloRuta && (
+          <div className="relative">
+            <button
+              onClick={() => setMenuCapas((v) => !v)}
+              className={`flex size-10 items-center justify-center rounded-full shadow-elevated transition ${
+                menuCapas ? "bg-ink text-paper" : "bg-surface text-ink hover:bg-paper"
+              }`}
+              aria-label="Cambiar capa"
+            >
+              <Layers className="size-4" />
+            </button>
+            {menuCapas && (
+              <div className="absolute right-12 top-0 w-44 overflow-hidden rounded-lg border border-border bg-surface shadow-elevated">
+                {CAPAS_OPCIONES.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => cambiarCapa(c.id)}
+                    className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition ${
+                      capa === c.id
+                        ? "bg-primary-light/40 font-semibold text-primary-dark"
+                        : "text-ink hover:bg-paper"
+                    }`}
+                  >
+                    {c.icono}
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         <button
           onClick={() => mapaRef.current?.locateMe()}
           className="flex size-10 items-center justify-center rounded-full bg-surface text-primary shadow-elevated transition hover:bg-paper"
@@ -300,21 +318,24 @@ export function PantallaCelular() {
         >
           <Locate className="size-4" />
         </button>
-        <button
-          onClick={() => setPanelFavoritas((v) => !v)}
-          className={`relative flex size-10 items-center justify-center rounded-full shadow-elevated transition ${
-            panelFavoritas ? "bg-primary text-primary-foreground" : "bg-surface text-ink hover:bg-paper"
-          }`}
-          aria-label="Rutas favoritas"
-        >
-          <Star className={`size-4 ${panelFavoritas ? "fill-current" : ""}`} />
-          {favs.rutas.length > 0 && (
-            <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-ink font-mono text-[9px] font-bold text-paper">
-              {favs.rutas.length}
-            </span>
-          )}
-        </button>
+        {!soloRuta && (
+          <button
+            onClick={() => setPanelFavoritas((v) => !v)}
+            className={`relative flex size-10 items-center justify-center rounded-full shadow-elevated transition ${
+              panelFavoritas ? "bg-primary text-primary-foreground" : "bg-surface text-ink hover:bg-paper"
+            }`}
+            aria-label="Rutas favoritas"
+          >
+            <Star className={`size-4 ${panelFavoritas ? "fill-current" : ""}`} />
+            {favs.rutas.length > 0 && (
+              <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-ink font-mono text-[9px] font-bold text-paper">
+                {favs.rutas.length}
+              </span>
+            )}
+          </button>
+        )}
       </div>
+
 
       {/* Panel de rutas favoritas */}
       {panelFavoritas && (
