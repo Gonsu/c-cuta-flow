@@ -92,7 +92,7 @@ export function BuscadorRuta({
   useEffect(() => {
     if (!foco) return;
     const q = queryActiva.trim();
-    if (q.length < 2) {
+    if (q.length < 3) {
       setResultados([]);
       return;
     }
@@ -104,7 +104,7 @@ export function BuscadorRuta({
       } finally {
         setCargando(false);
       }
-    }, 250);
+    }, 300);
     return () => clearTimeout(t);
   }, [queryActiva, foco]);
 
