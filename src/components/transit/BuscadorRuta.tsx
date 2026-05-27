@@ -236,6 +236,20 @@ export function BuscadorRuta({
                   placeholder="Selecciona destino"
                   className="w-full bg-transparent text-sm font-semibold text-ink outline-none placeholder:text-ink-subtle"
                 />
+                {destino && onToggleFavorito && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      onToggleFavorito(destino);
+                    }}
+                    aria-label={esLugarFavorito?.(destino) ? "Quitar de guardados" : "Guardar esta dirección"}
+                    aria-pressed={esLugarFavorito?.(destino) ?? false}
+                    className="rounded-full p-0.5 text-ink-muted transition hover:bg-border hover:text-primary"
+                  >
+                    <Star className={cn("size-3", esLugarFavorito?.(destino) && "fill-primary text-primary")} />
+                  </button>
+                )}
                 {qDestino && (
                   <button
                     type="button"
@@ -250,6 +264,7 @@ export function BuscadorRuta({
                   </button>
                 )}
               </div>
+
             </div>
           </div>
 
