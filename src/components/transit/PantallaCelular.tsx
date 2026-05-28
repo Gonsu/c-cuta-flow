@@ -189,6 +189,48 @@ export function PantallaCelular() {
     }
   };
 
+  const usarMiUbicacion = (campo: "origen" | "destino") => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocalización no disponible");
+      return;
+    }
+    const tid = toast.loading("Obteniendo tu ubicación…");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        if (!dentroDelAMC({ lat: latitude, lng: longitude })) {
+          toast.dismiss(tid);
+          toast.error("Estás fuera del área metropolitana de Cúcuta");
+          return;
+        }
+        // Punto provisional inmediato
+        const provisional: Punto = {
+          label: "Tu ubicación",
+          lat: latitude,
+          lng: longitude,
+        };
+        if (campo === "origen") setOrigen(provisional);
+        else setDestino(provisional);
+        setUbicacion({ lat: latitude, lng: longitude });
+        try {
+          const label = await reverseGeocode(latitude, longitude);
+          const final: Punto = { label, lat: latitude, lng: longitude };
+          if (campo === "origen") setOrigen(final);
+          else setDestino(final);
+          toast.dismiss(tid);
+          toast.success("Ubicación fijada", { description: label });
+        } catch {
+          toast.dismiss(tid);
+        }
+      },
+      (err) => {
+        toast.dismiss(tid);
+        toast.error("No se pudo obtener tu ubicación", { description: err.message });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
+    );
+  };
+
   const cambiarCapa = (c: Capa) => {
     setCapa(c);
     mapaRef.current?.setLayer(c);
