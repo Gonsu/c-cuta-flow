@@ -41,6 +41,7 @@ export function BuscadorRuta({
   onDestino,
   onInvertir,
   onPickEnMapa,
+  onUsarMiUbicacion,
   modoSeleccion,
   abrirEn,
   onAbiertoConsumido,
