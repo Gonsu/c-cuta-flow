@@ -63,6 +63,9 @@ export function PantallaCelular() {
   const [ubicacion, setUbicacion] = useState<{ lat: number; lng: number } | null>(null);
   const [abrirBuscadorEn, setAbrirBuscadorEn] = useState<"origen" | "destino" | null>(null);
   const [panelFavoritas, setPanelFavoritas] = useState(false);
+  const [tabFav, setTabFav] = useState<"rutas" | "lugares">("rutas");
+  const [renombrandoId, setRenombrandoId] = useState<string | null>(null);
+  const [nombreTemp, setNombreTemp] = useState("");
   const mapaRef = useRef<CucutaMapHandle>(null);
 
   const favs = useFavoritos();
