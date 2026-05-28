@@ -383,12 +383,12 @@ export function PantallaCelular() {
       </div>
 
 
-      {/* Panel de rutas favoritas */}
+      {/* Panel de favoritos: pestañas Rutas / Lugares guardados */}
       {panelFavoritas && (
-        <div className="absolute right-3 top-[16.5rem] z-[600] w-64 overflow-hidden rounded-xl border border-border bg-surface shadow-elevated">
+        <div className="absolute right-3 top-[16.5rem] z-[600] w-72 overflow-hidden rounded-xl border border-border bg-surface shadow-elevated">
           <div className="flex items-center justify-between border-b border-border px-3 py-2">
             <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-ink">
-              Rutas favoritas
+              Guardados
             </p>
             <button
               onClick={() => setPanelFavoritas(false)}
@@ -398,50 +398,185 @@ export function PantallaCelular() {
               <X className="size-3.5" />
             </button>
           </div>
-          {favs.rutas.length === 0 ? (
-            <div className="px-3 py-4 text-center">
-              <p className="text-xs text-ink-muted">
-                Aún no tienes rutas guardadas.
-              </p>
-              <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-subtle">
-                Toca el ♥ del panel inferior
-              </p>
-            </div>
-          ) : (
-            <ul className="max-h-72 overflow-y-auto">
-              {favs.rutas.map((r) => (
-                <li
-                  key={r.id}
-                  className="group flex items-center gap-1 border-b border-border last:border-b-0 hover:bg-paper"
-                >
-                  <button
-                    onClick={() => {
-                      setOrigen(r.origen);
-                      setDestino(r.destino);
-                      setPanelFavoritas(false);
-                    }}
-                    className="flex flex-1 flex-col gap-0.5 px-3 py-2 text-left"
+          <div className="flex border-b border-border">
+            <button
+              onClick={() => setTabFav("rutas")}
+              className={`flex-1 px-3 py-2 text-[11px] font-semibold transition ${
+                tabFav === "rutas"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              Rutas ({favs.rutas.length})
+            </button>
+            <button
+              onClick={() => setTabFav("lugares")}
+              className={`flex-1 px-3 py-2 text-[11px] font-semibold transition ${
+                tabFav === "lugares"
+                  ? "border-b-2 border-primary text-primary"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              Lugares ({favs.lugares.length})
+            </button>
+          </div>
+
+          {tabFav === "rutas" && (
+            favs.rutas.length === 0 ? (
+              <div className="px-3 py-4 text-center">
+                <p className="text-xs text-ink-muted">Aún no tienes rutas guardadas.</p>
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-subtle">
+                  Toca el ♥ del panel inferior
+                </p>
+              </div>
+            ) : (
+              <ul className="max-h-72 overflow-y-auto">
+                {favs.rutas.map((r) => (
+                  <li
+                    key={r.id}
+                    className="group flex items-center gap-1 border-b border-border last:border-b-0 hover:bg-paper"
                   >
-                    <p className="truncate text-[11px] font-semibold text-ink">
-                      {r.nombre}
-                    </p>
-                    <p className="truncate font-mono text-[9px] uppercase tracking-wider text-ink-muted">
-                      {r.origen.label} → {r.destino.label}
-                    </p>
-                  </button>
-                  <button
-                    onClick={() => favs.eliminarRuta(r.id)}
-                    aria-label="Eliminar ruta favorita"
-                    className="px-2 py-2 text-ink-muted opacity-0 transition group-hover:opacity-100 hover:text-ink"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </li>
-              ))}
-            </ul>
+                    <button
+                      onClick={() => {
+                        setOrigen(r.origen);
+                        setDestino(r.destino);
+                        setPanelFavoritas(false);
+                      }}
+                      className="flex flex-1 flex-col gap-0.5 px-3 py-2 text-left"
+                    >
+                      <p className="truncate text-[11px] font-semibold text-ink">{r.nombre}</p>
+                      <p className="truncate font-mono text-[9px] uppercase tracking-wider text-ink-muted">
+                        {r.origen.label} → {r.destino.label}
+                      </p>
+                    </button>
+                    <button
+                      onClick={() => favs.eliminarRuta(r.id)}
+                      aria-label="Eliminar ruta favorita"
+                      className="px-2 py-2 text-ink-muted opacity-0 transition group-hover:opacity-100 hover:text-ink"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+
+          {tabFav === "lugares" && (
+            favs.lugares.length === 0 ? (
+              <div className="px-3 py-4 text-center">
+                <p className="text-xs text-ink-muted">No tienes lugares guardados.</p>
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-ink-subtle">
+                  Toca la ★ junto a una dirección
+                </p>
+              </div>
+            ) : (
+              <ul className="max-h-80 overflow-y-auto">
+                {favs.lugares.map((l) => {
+                  const id = `${l.lat}_${l.lng}`;
+                  const editando = renombrandoId === id;
+                  const fecha = new Date(l.guardadoEn).toLocaleString("es-CO", {
+                    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+                  });
+                  return (
+                    <li
+                      key={id}
+                      className="group flex flex-col gap-1 border-b border-border px-3 py-2 last:border-b-0 hover:bg-paper"
+                    >
+                      <div className="flex items-start gap-2">
+                        <MapPin className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                        <div className="min-w-0 flex-1">
+                          {editando ? (
+                            <input
+                              autoFocus
+                              value={nombreTemp}
+                              onChange={(e) => setNombreTemp(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  favs.renombrarLugar(l, nombreTemp);
+                                  setRenombrandoId(null);
+                                } else if (e.key === "Escape") {
+                                  setRenombrandoId(null);
+                                }
+                              }}
+                              placeholder="Casa, Trabajo…"
+                              className="w-full rounded border border-border bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-ink outline-none focus:border-primary"
+                            />
+                          ) : (
+                            <p className="truncate text-[11px] font-semibold text-ink">
+                              {l.nombre || l.label}
+                            </p>
+                          )}
+                          {l.nombre && !editando && (
+                            <p className="truncate text-[10px] text-ink-muted">{l.label}</p>
+                          )}
+                          <p className="font-mono text-[9px] uppercase tracking-wider text-ink-subtle">
+                            Guardado · {fecha}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 gap-0.5">
+                          {editando ? (
+                            <button
+                              onClick={() => {
+                                favs.renombrarLugar(l, nombreTemp);
+                                setRenombrandoId(null);
+                              }}
+                              aria-label="Guardar nombre"
+                              className="rounded p-1 text-primary hover:bg-primary-light/40"
+                            >
+                              <Check className="size-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setRenombrandoId(id);
+                                setNombreTemp(l.nombre ?? "");
+                              }}
+                              aria-label="Renombrar"
+                              className="rounded p-1 text-ink-muted opacity-0 transition group-hover:opacity-100 hover:text-ink"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => favs.eliminarLugar(l)}
+                            aria-label="Eliminar lugar"
+                            className="rounded p-1 text-ink-muted opacity-0 transition group-hover:opacity-100 hover:text-ink"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            setOrigen({ label: l.nombre || l.label, lat: l.lat, lng: l.lng });
+                            setPanelFavoritas(false);
+                          }}
+                          className="flex-1 rounded bg-paper px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-ink hover:bg-border/60"
+                        >
+                          Desde
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDestino({ label: l.nombre || l.label, lat: l.lat, lng: l.lng });
+                            setPanelFavoritas(false);
+                          }}
+                          className="flex-1 rounded bg-primary px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-primary-foreground hover:opacity-90"
+                        >
+                          Hacia
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
           )}
         </div>
       )}
+
+
 
       {/* Botones de zoom (debajo, mismo lado) */}
       <div className="absolute bottom-[46%] right-3 z-[500] flex flex-col overflow-hidden rounded-full border border-border bg-surface shadow-elevated">
