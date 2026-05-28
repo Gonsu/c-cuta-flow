@@ -4,7 +4,7 @@
  * - Escribes directamente en "Desde" o "Hacia" y aparecen sugerencias bajo el campo.
  * - Soporta favoritos (★) y selección sobre el mapa.
  */
-import { ArrowUpDown, Crosshair, MapPin, Loader2, Star, X } from "lucide-react";
+import { ArrowUpDown, Crosshair, MapPin, Loader2, Star, X, LocateFixed } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { buscarLugares, type Punto } from "@/lib/routing";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ interface BuscadorRutaProps {
   onDestino: (p: Punto) => void;
   onInvertir: () => void;
   onPickEnMapa: (campo: "origen" | "destino") => void;
+  onUsarMiUbicacion?: (campo: "origen" | "destino") => void;
   modoSeleccion: "origen" | "destino" | null;
   abrirEn?: "origen" | "destino" | null;
   onAbiertoConsumido?: () => void;
