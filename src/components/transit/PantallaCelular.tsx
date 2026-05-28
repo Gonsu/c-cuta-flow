@@ -295,6 +295,7 @@ export function PantallaCelular() {
             onDestino={setDestino}
             onInvertir={invertir}
             onPickEnMapa={setModoSeleccion}
+            onUsarMiUbicacion={usarMiUbicacion}
             modoSeleccion={modoSeleccion}
             abrirEn={abrirBuscadorEn}
             onAbiertoConsumido={() => setAbrirBuscadorEn(null)}
