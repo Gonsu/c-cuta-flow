@@ -331,52 +331,133 @@ function descripcionWMO(code: number): string {
 
 /* ------------------------------------------------------------------ */
 /*  Geocodificación — Nominatim con normalización de direcciones CO    */
+/*  Estrategia tipo Google Maps Place Autocomplete:                    */
+/*    1) Parsear tokens CO (tipo vía, número, sufijo cardinal, casa,   */
+/*       barrio).                                                      */
+/*    2) Lanzar en paralelo:                                           */
+/*         a) Búsqueda STRUCTURED (street + city) — la más precisa.    */
+/*         b) Búsqueda libre normalizada acotada al AMC.               */
+/*         c) Búsqueda libre cruda sin bounded (tolera typos).         */
+/*    3) Mezclar, deduplicar, rankear por proximidad a Cúcuta y por    */
+/*       match con tokens de la consulta.                              */
 /* ------------------------------------------------------------------ */
 
 const MUNICIPIOS_AMC = ["cúcuta", "cucuta", "los patios", "villa del rosario"];
 
-/**
- * Normaliza direcciones colombianas a un formato que Nominatim entiende mejor.
- *   "cl 4n #7e-30 los pinos"  →  "Calle 4 Norte 7E 30 los pinos"
- *   "cra 12 #5-20"            →  "Carrera 12 5 20"
- *   "av 0 #10-15"             →  "Avenida 0 10 15"
- */
-function normalizarDireccionCO(q: string): string {
-  let s = " " + q.toLowerCase().trim() + " ";
-  // tipos de vía abreviados
-  s = s.replace(/\b(cl|cll|calle)\b\.?/g, "calle");
-  s = s.replace(/\b(cra|kra|carr|carrera|kr)\b\.?/g, "carrera");
-  s = s.replace(/\b(av|avda|avenida)\b\.?/g, "avenida");
-  s = s.replace(/\b(diag|diagonal)\b\.?/g, "diagonal");
-  s = s.replace(/\b(trans|transv|transversal)\b\.?/g, "transversal");
-  // número + sufijo cardinal: "4n" → "4 norte", "7e" → "7 este"
-  s = s.replace(/(\d+)\s*n\b/g, "$1 norte");
-  s = s.replace(/(\d+)\s*s\b/g, "$1 sur");
-  s = s.replace(/(\d+)\s*e\b/g, "$1 este");
-  s = s.replace(/(\d+)\s*o\b/g, "$1 oeste");
-  // separadores típicos #, No., nro
-  s = s.replace(/#|n[ºo°]\.?|nro\.?|num\.?/g, " ");
-  // guion entre números: "30-15" → "30 15"
-  s = s.replace(/(\d)\s*-\s*(\d)/g, "$1 $2");
-  // espacios extras
-  s = s.replace(/\s+/g, " ").trim();
-  return s;
+interface DireccionParseada {
+  /** Calle reconstruida lista para Nominatim, ej. "Calle 4 Norte 7E-30". */
+  calle: string;
+  /** Barrio / suburb si lo escribió, ej. "Los Pinos". */
+  barrio?: string;
+  /** Municipio si lo escribió, ej. "Los Patios". */
+  municipio?: string;
+  /** Texto restante (POI, lugar). */
+  resto: string;
+  /** True si parece una dirección estructurada (tipo vía + número). */
+  esDireccion: boolean;
 }
 
-/** Lanza una consulta a Nominatim y devuelve resultados crudos. */
+const TIPOS_VIA: Record<string, string> = {
+  cl: "Calle", cll: "Calle", calle: "Calle",
+  cra: "Carrera", kra: "Carrera", carr: "Carrera", carrera: "Carrera", kr: "Carrera",
+  av: "Avenida", avda: "Avenida", avenida: "Avenida",
+  diag: "Diagonal", diagonal: "Diagonal",
+  trans: "Transversal", transv: "Transversal", transversal: "Transversal",
+  autopista: "Autopista", auto: "Autopista",
+};
+
+const MUNICIPIOS_TOKENS = [
+  { match: /\b(los\s*patios)\b/i, nombre: "Los Patios" },
+  { match: /\b(villa\s*del\s*rosario)\b/i, nombre: "Villa del Rosario" },
+  { match: /\b(c[uú]cuta)\b/i, nombre: "Cúcuta" },
+];
+
+/**
+ * Parsea una consulta tipo "cl 4n #7e-30 los pinos, los patios".
+ * Devuelve calle normalizada + barrio/municipio si los detecta.
+ */
+function parsearDireccionCO(input: string): DireccionParseada {
+  let s = " " + input.toLowerCase().trim().replace(/\s+/g, " ") + " ";
+
+  // Detectar municipio (lo quitamos antes de seguir parseando).
+  let municipio: string | undefined;
+  for (const m of MUNICIPIOS_TOKENS) {
+    if (m.match.test(s)) {
+      municipio = m.nombre;
+      s = s.replace(m.match, " ");
+      break;
+    }
+  }
+
+  // Normalizar separadores #, No., nro
+  s = s.replace(/#|n[ºo°]\.?|nro\.?|num\.?/g, " ");
+
+  // Detectar tipo de vía + número [+ sufijo cardinal] [+ casa]
+  // Ej: "cl 4 n 7 e 30", "calle 4n 7e-30", "carrera 12 5 20"
+  const tipoRegex = new RegExp(
+    `\\b(${Object.keys(TIPOS_VIA).join("|")})\\b\\.?`,
+    "i",
+  );
+  let calle = "";
+  let esDireccion = false;
+
+  const tipoMatch = s.match(tipoRegex);
+  if (tipoMatch) {
+    const tipoCanonico = TIPOS_VIA[tipoMatch[1].toLowerCase()];
+    const idx = s.indexOf(tipoMatch[0]);
+    let after = s.slice(idx + tipoMatch[0].length).trim();
+    // capturar: número con sufijo opcional (norte/sur/este/oeste o n/s/e/o), luego "número casa"
+    const numRegex =
+      /^(\d+)\s*(n|s|e|o|norte|sur|este|oeste)?(?:\s+(\d+)\s*(n|s|e|o|norte|sur|este|oeste)?(?:\s*[-–]\s*(\d+))?)?/i;
+    const m = after.match(numRegex);
+    if (m) {
+      const sufijoMap: Record<string, string> = {
+        n: "Norte", s: "Sur", e: "Este", o: "Oeste",
+        norte: "Norte", sur: "Sur", este: "Este", oeste: "Oeste",
+      };
+      const num1 = m[1];
+      const suf1 = m[2] ? sufijoMap[m[2].toLowerCase()] : "";
+      const num2 = m[3] ?? "";
+      const suf2 = m[4] ? sufijoMap[m[4].toLowerCase()] : "";
+      const casa = m[5] ?? "";
+      calle = `${tipoCanonico} ${num1}${suf1 ? " " + suf1 : ""}`;
+      if (num2) calle += ` #${num2}${suf2 ? suf2 : ""}${casa ? "-" + casa : ""}`;
+      esDireccion = true;
+      // remover lo capturado para dejar como "resto" lo que quede (barrio, etc.)
+      after = after.slice(m[0].length).trim();
+      s = s.slice(0, idx).trim() + " " + after;
+    } else {
+      calle = tipoCanonico;
+      esDireccion = true;
+      s = s.slice(0, idx).trim() + " " + after;
+    }
+  }
+
+  // Resto = lo que queda después de quitar tipo+número+municipio
+  const resto = s.replace(/\s+/g, " ").trim();
+
+  // Si quedó texto, asumimos que es barrio / POI
+  let barrio: string | undefined = resto.length > 0 ? resto : undefined;
+
+  return { calle, barrio, municipio, resto, esDireccion };
+}
+
+/** Lanza una consulta a Nominatim. Soporta modo libre y estructurado. */
 async function nominatimSearch(
-  q: string,
+  params: Record<string, string>,
   opts: { bounded?: boolean; limit?: number } = {},
 ): Promise<any[]> {
   const { bounded = true, limit = 8 } = opts;
   const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("q", q);
   url.searchParams.set("format", "json");
   url.searchParams.set("limit", String(limit));
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("viewbox", CUCUTA_VIEWBOX);
   if (bounded) url.searchParams.set("bounded", "1");
   url.searchParams.set("countrycodes", "co");
+  for (const [k, v] of Object.entries(params)) {
+    if (v) url.searchParams.set(k, v);
+  }
   try {
     const res = await fetch(url.toString(), {
       headers: { "Accept-Language": "es" },
@@ -388,60 +469,141 @@ async function nominatimSearch(
   }
 }
 
+/** Distancia cuadrada simple (sin sqrt) al centro de Cúcuta — para ranking. */
+function distCuadradaAlCentro(lat: number, lng: number) {
+  const dLat = lat - CUCUTA_BOUNDS.lat;
+  const dLng = lng - CUCUTA_BOUNDS.lng;
+  return dLat * dLat + dLng * dLng;
+}
+
 /**
- * Autocompletado con Nominatim, restringido al AMC de Cúcuta.
- * Lanza varias variantes en paralelo (cruda + normalizada + con ciudad)
- * para tolerar formatos colombianos tipo "Cl 4N #7e-30 Los Pinos".
+ * Autocompletado tipo Google Maps Place Autocomplete, restringido al AMC.
+ * Combina búsqueda estructurada (street + city) con búsquedas libres,
+ * tolera typos y rankea por proximidad a Cúcuta.
  */
 export async function buscarLugares(query: string): Promise<Punto[]> {
   const q = query.trim();
-  if (q.length < 3) return [];
+  if (q.length < 2) return [];
 
-  const normalizada = normalizarDireccionCO(q);
-  const variantes = new Set<string>([
-    `${q}, Cúcuta, Norte de Santander, Colombia`,
-    `${normalizada}, Cúcuta, Norte de Santander, Colombia`,
-    `${normalizada}, Área Metropolitana de Cúcuta, Colombia`,
-  ]);
-
-  // Ejecutar variantes en paralelo (acotadas) y, en paralelo,
-  // una variante sin bounded para tolerar coincidencias parciales.
+  const parseada = parsearDireccionCO(q);
   const promesas: Promise<any[]>[] = [];
-  for (const v of variantes) promesas.push(nominatimSearch(v, { bounded: true }));
-  promesas.push(nominatimSearch(`${normalizada}, Cúcuta`, { bounded: false, limit: 6 }));
+
+  // (a) Búsqueda estructurada — usa parámetros separados (la más precisa).
+  if (parseada.esDireccion && parseada.calle) {
+    const ciudad = parseada.municipio ?? "Cúcuta";
+    promesas.push(
+      nominatimSearch(
+        {
+          street: parseada.calle,
+          city: ciudad,
+          county: "Cúcuta",
+          state: "Norte de Santander",
+          country: "Colombia",
+        },
+        { bounded: false, limit: 6 },
+      ),
+    );
+    if (parseada.barrio) {
+      // Variante con barrio en street (mejora hits cuando OSM tiene el barrio).
+      promesas.push(
+        nominatimSearch(
+          {
+            street: `${parseada.calle} ${parseada.barrio}`,
+            city: ciudad,
+            state: "Norte de Santander",
+            country: "Colombia",
+          },
+          { bounded: false, limit: 6 },
+        ),
+      );
+    }
+  }
+
+  // (b) Búsqueda libre — query crudo + variantes con ciudad.
+  const ciudadHint = parseada.municipio ?? "Cúcuta";
+  const libres = [
+    q,
+    `${q}, ${ciudadHint}, Norte de Santander, Colombia`,
+  ];
+  if (parseada.esDireccion && parseada.calle) {
+    const completo = parseada.barrio
+      ? `${parseada.calle}, ${parseada.barrio}, ${ciudadHint}`
+      : `${parseada.calle}, ${ciudadHint}`;
+    libres.push(`${completo}, Norte de Santander, Colombia`);
+  }
+  for (const v of libres) {
+    promesas.push(nominatimSearch({ q: v }, { bounded: true, limit: 6 }));
+  }
+  // (c) Una variante sin bounded para tolerar coincidencias parciales / typos.
+  promesas.push(nominatimSearch({ q: `${q}, Cúcuta` }, { bounded: false, limit: 5 }));
 
   const lotes = await Promise.all(promesas);
   const crudos = lotes.flat();
 
-  // Deduplicar por osm_id / coordenadas y filtrar dentro del AMC.
-  const vistos = new Set<string>();
-  const resultados: Punto[] = [];
+  // Tokens (para ranking por match textual).
+  const tokens = q
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .split(/\s+/)
+    .filter((t) => t.length >= 3);
+
+  type Cand = { p: Punto; score: number };
+  const vistos = new Map<string, Cand>();
+
   for (const d of crudos) {
     const lat = parseFloat(d.lat);
     const lng = parseFloat(d.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
     if (!dentroDelAMC({ lat, lng })) continue;
     const addr = d.address ?? {};
-    const muni = (
+    const muniRaw = (
       addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? addr.county ?? ""
     )
       .toString()
       .toLowerCase();
-    if (muni && !MUNICIPIOS_AMC.some((m) => muni.includes(m))) continue;
+    // Si vino con municipio y NO pertenece al AMC, lo descartamos.
+    // (Si no vino municipio, lo aceptamos porque está dentro del bbox.)
+    if (muniRaw && !MUNICIPIOS_AMC.some((m) => muniRaw.includes(m))) continue;
+
     const key =
       d.osm_id != null
         ? `${d.osm_type}-${d.osm_id}`
         : `${lat.toFixed(5)}-${lng.toFixed(5)}`;
-    if (vistos.has(key)) continue;
-    vistos.add(key);
-    resultados.push({
-      label: formatearDireccion(d, q),
-      lat,
-      lng,
-    });
-    if (resultados.length >= 10) break;
+
+    // Ranking:
+    //   - importance Nominatim
+    //   - bonus por match de tokens en display_name
+    //   - bonus por proximidad al centro (más cerca = mejor)
+    //   - bonus si es address/highway (sobre POI shop irrelevante)
+    const display = (d.display_name ?? "").toLowerCase();
+    const matches = tokens.reduce(
+      (acc, t) => acc + (display.includes(t) ? 1 : 0),
+      0,
+    );
+    const tipo = (d.addresstype ?? d.class ?? "").toString();
+    const tipoBonus =
+      tipo === "road" || tipo === "house" || tipo === "highway" ? 0.5 : 0;
+    const dist = distCuadradaAlCentro(lat, lng);
+    const score =
+      (Number(d.importance) || 0) +
+      matches * 0.3 +
+      tipoBonus -
+      dist * 50;
+
+    const prev = vistos.get(key);
+    if (!prev || score > prev.score) {
+      vistos.set(key, {
+        p: { label: formatearDireccion(d), lat, lng },
+        score,
+      });
+    }
   }
-  return resultados;
+
+  return Array.from(vistos.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10)
+    .map((c) => c.p);
 }
 
 /**
@@ -459,14 +621,14 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   });
   if (!res.ok) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   const data = await res.json();
-  return formatearDireccion(data, "");
+  return formatearDireccion(data);
 }
 
 /**
  * Construye una etiqueta tipo Google Maps:
- *   "Cl. 4 Nte. #7E-30 · Br. Los Pinos · Cúcuta"
+ *   "Calle 4 N #7E-30 · Los Pinos · Cúcuta"
  */
-function formatearDireccion(d: any, _consulta: string): string {
+function formatearDireccion(d: any): string {
   const addr = d.address ?? {};
   const via =
     addr.road ?? addr.pedestrian ?? addr.footway ?? addr.residential ?? "";
@@ -475,16 +637,21 @@ function formatearDireccion(d: any, _consulta: string): string {
     addr.suburb ?? addr.neighbourhood ?? addr.quarter ?? addr.city_district ?? "";
   const ciudad =
     addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? "";
+  // limpia el "Perímetro Urbano " que Nominatim suele poner en Cúcuta
+  const ciudadLimpia = ciudad.replace(/^per[íi]metro urbano\s+/i, "");
   const partes: string[] = [];
+  if (d.name && d.name !== via) partes.push(d.name);
   if (via) partes.push(numero ? `${via} #${numero}` : via);
-  else if (d.name) partes.push(d.name);
   if (barrio) partes.push(barrio);
-  if (ciudad) partes.push(ciudad);
+  if (ciudadLimpia) partes.push(ciudadLimpia);
   if (partes.length === 0) {
     const raw = (d.display_name ?? "").split(",").map((s: string) => s.trim());
     return raw.slice(0, 2).join(" · ");
   }
-  return partes.join(" · ");
+  // Deduplicar partes consecutivas iguales
+  const out: string[] = [];
+  for (const p of partes) if (out[out.length - 1] !== p) out.push(p);
+  return out.join(" · ");
 }
 
 export const CUCUTA_CENTER = CUCUTA_BOUNDS;
