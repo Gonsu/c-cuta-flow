@@ -281,21 +281,36 @@ export function BuscadorRuta({
 
         {foco && (
           <div className="border-t border-border bg-paper px-2 py-2">
-            <button
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onPickEnMapa(foco);
-                setFoco(null);
-              }}
-              className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition ${
-                modoSeleccion === foco
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-surface text-ink hover:bg-border/50"
-              }`}
-            >
-              <Crosshair className="size-3.5" />
-              Tocar en el mapa para fijar {foco}
-            </button>
+            <div className="flex gap-1.5">
+              <button
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onPickEnMapa(foco);
+                  setFoco(null);
+                }}
+                className={`flex flex-1 items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs transition ${
+                  modoSeleccion === foco
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface text-ink hover:bg-border/50"
+                }`}
+              >
+                <Crosshair className="size-3.5" />
+                Tocar en el mapa
+              </button>
+              {onUsarMiUbicacion && (
+                <button
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onUsarMiUbicacion(foco);
+                    setFoco(null);
+                  }}
+                  className="flex flex-1 items-center gap-2 rounded-md bg-surface px-2.5 py-2 text-left text-xs text-ink transition hover:bg-border/50"
+                >
+                  <LocateFixed className="size-3.5 text-primary" />
+                  Mi ubicación
+                </button>
+              )}
+            </div>
 
             {cargando && (
               <div className="mt-2 flex items-center gap-2 px-2 py-1 text-[10px] text-ink-muted">
