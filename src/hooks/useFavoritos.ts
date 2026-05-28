@@ -1,12 +1,17 @@
 /**
  * useFavoritos — persistencia local (localStorage) de:
- *   • Lugares favoritos (Punto)
- *   • Rutas favoritas (par origen + destino)
- *
- * Sin backend, solo el dispositivo. Pensado para el mockup académico.
+ *   • Lugares guardados (con alias y timestamp)
+ *   • Rutas guardadas (par origen + destino)
  */
 import { useCallback, useEffect, useState } from "react";
 import type { Punto } from "@/lib/routing";
+
+export interface LugarGuardado extends Punto {
+  /** Alias personalizado opcional (ej. "Casa", "Trabajo"). */
+  nombre?: string;
+  /** Timestamp ms de cuando se guardó. */
+  guardadoEn: number;
+}
 
 export interface RutaFavorita {
   id: string;
@@ -16,7 +21,8 @@ export interface RutaFavorita {
   creadaEn: number;
 }
 
-const KEY_LUGARES = "transit:favoritos:lugares:v1";
+const KEY_LUGARES = "transit:favoritos:lugares:v2";
+const KEY_LUGARES_LEGACY = "transit:favoritos:lugares:v1";
 const KEY_RUTAS = "transit:favoritos:rutas:v1";
 
 function leer<T>(key: string, fallback: T): T {
@@ -38,11 +44,20 @@ function escribir<T>(key: string, value: T) {
   }
 }
 
-const idDeLugar = (p: Punto) => `${p.lat.toFixed(5)}_${p.lng.toFixed(5)}`;
+const idDeLugar = (p: { lat: number; lng: number }) =>
+  `${p.lat.toFixed(5)}_${p.lng.toFixed(5)}`;
 const idDeRuta = (o: Punto, d: Punto) => `${idDeLugar(o)}__${idDeLugar(d)}`;
 
+function migrarLugares(): LugarGuardado[] {
+  const v2 = leer<LugarGuardado[]>(KEY_LUGARES, []);
+  if (v2.length > 0) return v2;
+  const legacy = leer<Punto[]>(KEY_LUGARES_LEGACY, []);
+  if (legacy.length === 0) return [];
+  return legacy.map((p) => ({ ...p, guardadoEn: Date.now() }));
+}
+
 export function useFavoritos() {
-  const [lugares, setLugares] = useState<Punto[]>(() => leer<Punto[]>(KEY_LUGARES, []));
+  const [lugares, setLugares] = useState<LugarGuardado[]>(() => migrarLugares());
   const [rutas, setRutas] = useState<RutaFavorita[]>(() =>
     leer<RutaFavorita[]>(KEY_RUTAS, []),
   );
@@ -56,12 +71,28 @@ export function useFavoritos() {
     [lugares],
   );
 
-  const toggleLugar = useCallback((p: Punto) => {
+  const toggleLugar = useCallback((p: Punto, nombre?: string) => {
     setLugares((prev) => {
       const id = idDeLugar(p);
       const existe = prev.some((x) => idDeLugar(x) === id);
-      return existe ? prev.filter((x) => idDeLugar(x) !== id) : [p, ...prev].slice(0, 25);
+      if (existe) return prev.filter((x) => idDeLugar(x) !== id);
+      const nuevo: LugarGuardado = {
+        ...p,
+        nombre: nombre?.trim() || undefined,
+        guardadoEn: Date.now(),
+      };
+      return [nuevo, ...prev].slice(0, 50);
     });
+  }, []);
+
+  const renombrarLugar = useCallback((p: Punto, nuevoNombre: string) => {
+    setLugares((prev) =>
+      prev.map((x) =>
+        idDeLugar(x) === idDeLugar(p)
+          ? { ...x, nombre: nuevoNombre.trim() || undefined }
+          : x,
+      ),
+    );
   }, []);
 
   const eliminarLugar = useCallback((p: Punto) => {
@@ -99,6 +130,7 @@ export function useFavoritos() {
     rutas,
     esLugarFavorito,
     toggleLugar,
+    renombrarLugar,
     eliminarLugar,
     esRutaFavorita,
     toggleRuta,
