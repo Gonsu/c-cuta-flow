@@ -4,6 +4,7 @@
  * cuando hay espacio horizontal. Mantiene el bottom sheet en móvil.
  */
 import { X, Route, Clock, CloudRain, TrafficCone, Gauge } from "lucide-react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import type { ClimaCucuta } from "@/lib/routing";
 
