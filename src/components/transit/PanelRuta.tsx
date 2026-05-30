@@ -511,7 +511,7 @@ export function PanelRuta({
             comparacionEvitar &&
             duracionS != null &&
             semaforos != null && (
-              <div className="mt-2 overflow-hidden rounded-lg border border-border">
+              <div className="mt-2 overflow-hidden rounded-lg border border-border lg:hidden">
                 <div className="grid grid-cols-2 divide-x divide-border bg-paper">
                   <div className="p-2.5">
                     <p className="font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
