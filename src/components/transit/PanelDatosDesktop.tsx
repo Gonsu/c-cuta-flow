@@ -65,7 +65,9 @@ export function PanelDatosDesktop({
         ? "text-traffic-heavy"
         : "text-traffic-mid";
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <aside
       className="fixed right-6 top-24 z-[800] hidden max-h-[80vh] w-[440px] min-w-[420px] flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-elevated lg:flex"
       aria-label="Panel de datos de la ruta"
