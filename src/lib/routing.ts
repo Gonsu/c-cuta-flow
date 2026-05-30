@@ -504,7 +504,6 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
       ),
     );
     if (parseada.barrio) {
-      // Variante con barrio en street (mejora hits cuando OSM tiene el barrio).
       promesas.push(
         nominatimSearch(
           {
@@ -534,13 +533,17 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
   for (const v of libres) {
     promesas.push(nominatimSearch({ q: v }, { bounded: true, limit: 6 }));
   }
-  // (c) Una variante sin bounded para tolerar coincidencias parciales / typos.
-  promesas.push(nominatimSearch({ q: `${q}, Cúcuta` }, { bounded: false, limit: 5 }));
+  // (c) Variantes sin bounded para tolerar coincidencias parciales.
+  promesas.push(nominatimSearch({ q: `${q}, Cúcuta` }, { bounded: false, limit: 6 }));
+  promesas.push(nominatimSearch({ q: `${q}, Norte de Santander, Colombia` }, { bounded: false, limit: 6 }));
 
   const lotes = await Promise.all(promesas);
   const crudos = lotes.flat();
 
-  // Tokens (para ranking por match textual).
+  if (crudos.length === 0) {
+    console.warn("[buscarLugares] Nominatim no devolvió resultados para:", q);
+  }
+
   const tokens = q
     .toLowerCase()
     .normalize("NFD")
@@ -551,31 +554,35 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
   type Cand = { p: Punto; score: number };
   const vistos = new Map<string, Cand>();
 
+  // Bounding box ampliado (~5km) para tolerar resultados justo en el borde.
+  const margen = 0.05;
+  const bboxAmplio = {
+    south: AMC_BBOX.south - margen,
+    north: AMC_BBOX.north + margen,
+    west: AMC_BBOX.west - margen,
+    east: AMC_BBOX.east + margen,
+  };
+
   for (const d of crudos) {
     const lat = parseFloat(d.lat);
     const lng = parseFloat(d.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-    if (!dentroDelAMC({ lat, lng })) continue;
+    // Aceptamos resultados dentro del bbox ampliado O en Norte de Santander.
     const addr = d.address ?? {};
-    const muniRaw = (
-      addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? addr.county ?? ""
-    )
-      .toString()
-      .toLowerCase();
-    // Si vino con municipio y NO pertenece al AMC, lo descartamos.
-    // (Si no vino municipio, lo aceptamos porque está dentro del bbox.)
-    if (muniRaw && !MUNICIPIOS_AMC.some((m) => muniRaw.includes(m))) continue;
+    const enBbox =
+      lat >= bboxAmplio.south &&
+      lat <= bboxAmplio.north &&
+      lng >= bboxAmplio.west &&
+      lng <= bboxAmplio.east;
+    const estado = (addr.state ?? "").toString().toLowerCase();
+    const enEstado = estado.includes("santander") || estado.includes("norte de santander");
+    if (!enBbox && !enEstado) continue;
 
     const key =
       d.osm_id != null
         ? `${d.osm_type}-${d.osm_id}`
         : `${lat.toFixed(5)}-${lng.toFixed(5)}`;
 
-    // Ranking:
-    //   - importance Nominatim
-    //   - bonus por match de tokens en display_name
-    //   - bonus por proximidad al centro (más cerca = mejor)
-    //   - bonus si es address/highway (sobre POI shop irrelevante)
     const display = (d.display_name ?? "").toLowerCase();
     const matches = tokens.reduce(
       (acc, t) => acc + (display.includes(t) ? 1 : 0),
@@ -585,10 +592,12 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
     const tipoBonus =
       tipo === "road" || tipo === "house" || tipo === "highway" ? 0.5 : 0;
     const dist = distCuadradaAlCentro(lat, lng);
+    const dentroBonus = dentroDelAMC({ lat, lng }) ? 0.4 : 0;
     const score =
       (Number(d.importance) || 0) +
       matches * 0.3 +
-      tipoBonus -
+      tipoBonus +
+      dentroBonus -
       dist * 50;
 
     const prev = vistos.get(key);
@@ -600,10 +609,18 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
     }
   }
 
-  return Array.from(vistos.values())
+  const finales = Array.from(vistos.values())
     .sort((a, b) => b.score - a.score)
     .slice(0, 10)
     .map((c) => c.p);
+
+  if (finales.length === 0 && crudos.length > 0) {
+    console.warn(
+      `[buscarLugares] ${crudos.length} resultados crudos filtrados a 0. Query: "${q}"`,
+    );
+  }
+
+  return finales;
 }
 
 /**
