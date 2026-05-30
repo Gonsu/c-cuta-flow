@@ -171,7 +171,8 @@ export function PanelDatosDesktop({
           </p>
         )}
       </div>
-    </aside>
+    </aside>,
+    document.body,
   );
 }
 
