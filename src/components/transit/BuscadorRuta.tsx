@@ -98,7 +98,7 @@ export function BuscadorRuta({
   useEffect(() => {
     if (!foco) return;
     const q = queryActiva.trim();
-    if (q.length < 3) {
+    if (q.length < 2) {
       setResultados([]);
       return;
     }
@@ -107,6 +107,9 @@ export function BuscadorRuta({
       try {
         const r = await buscarLugares(q);
         setResultados(r);
+      } catch (err) {
+        console.error("[BuscadorRuta] error buscando lugares:", err);
+        setResultados([]);
       } finally {
         setCargando(false);
       }
@@ -147,8 +150,13 @@ export function BuscadorRuta({
   };
 
   const limpiarCampo = (campo: "origen" | "destino") => {
-    if (campo === "origen") setQOrigen("");
-    else setQDestino("");
+    if (campo === "origen") {
+      setQOrigen("");
+      onLimpiarOrigen?.();
+    } else {
+      setQDestino("");
+      onLimpiarDestino?.();
+    }
     setResultados([]);
     setFoco(campo);
     const r = campo === "origen" ? refOrigen : refDestino;
