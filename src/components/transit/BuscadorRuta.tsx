@@ -14,6 +14,8 @@ interface BuscadorRutaProps {
   destino: Punto | null;
   onOrigen: (p: Punto) => void;
   onDestino: (p: Punto) => void;
+  onLimpiarOrigen?: () => void;
+  onLimpiarDestino?: () => void;
   onInvertir: () => void;
   onPickEnMapa: (campo: "origen" | "destino") => void;
   onUsarMiUbicacion?: (campo: "origen" | "destino") => void;
