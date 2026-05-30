@@ -9,6 +9,7 @@ import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map
 import { CucutaMap, type CucutaMapHandle, type Capa } from "./CucutaMap";
 import { BuscadorRuta } from "./BuscadorRuta";
 import { PanelRuta } from "./PanelRuta";
+import { PanelDatosDesktop } from "./PanelDatosDesktop";
 import { useRuta } from "@/hooks/useRuta";
 import { useFavoritos } from "@/hooks/useFavoritos";
 import {
