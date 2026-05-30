@@ -41,6 +41,8 @@ export function BuscadorRuta({
   destino,
   onOrigen,
   onDestino,
+  onLimpiarOrigen,
+  onLimpiarDestino,
   onInvertir,
   onPickEnMapa,
   onUsarMiUbicacion,
