@@ -26,9 +26,9 @@ const ORIGEN_DEFAULT: Punto = {
   lng: -72.5043,
 };
 const DESTINO_DEFAULT: Punto = {
-  label: "UFPS · Campus Principal",
-  lat: 7.8995,
-  lng: -72.4856,
+  label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta",
+  lat: 7.8939,
+  lng: -72.5078,
 };
 
 const CAPAS_OPCIONES: { id: Capa; label: string; icono: React.ReactNode }[] = [
