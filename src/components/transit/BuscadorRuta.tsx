@@ -27,7 +27,7 @@ interface BuscadorRutaProps {
 }
 
 const SUGERENCIAS_RAPIDAS: Punto[] = [
-  { label: "UFPS · Campus Principal", lat: 7.8995, lng: -72.4856 },
+  { label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta", lat: 7.8939, lng: -72.5078 },
   { label: "Ventura Plaza · Centro Comercial", lat: 7.8942, lng: -72.5043 },
   { label: "Parque Santander · Centro", lat: 7.8895, lng: -72.5052 },
   { label: "Jardín Plaza Cúcuta", lat: 7.9044, lng: -72.5026 },
