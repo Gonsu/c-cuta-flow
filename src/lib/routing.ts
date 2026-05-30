@@ -462,9 +462,13 @@ async function nominatimSearch(
     const res = await fetch(url.toString(), {
       headers: { "Accept-Language": "es" },
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(`[Nominatim] HTTP ${res.status} para`, params);
+      return [];
+    }
     return await res.json();
-  } catch {
+  } catch (err) {
+    console.error("[Nominatim] fetch error:", err, "params:", params);
     return [];
   }
 }
