@@ -9,6 +9,7 @@ import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map
 import { CucutaMap, type CucutaMapHandle, type Capa } from "./CucutaMap";
 import { BuscadorRuta } from "./BuscadorRuta";
 import { PanelRuta } from "./PanelRuta";
+import { PanelDatosDesktop } from "./PanelDatosDesktop";
 import { useRuta } from "@/hooks/useRuta";
 import { useFavoritos } from "@/hooks/useFavoritos";
 import {
@@ -26,9 +27,9 @@ const ORIGEN_DEFAULT: Punto = {
   lng: -72.5043,
 };
 const DESTINO_DEFAULT: Punto = {
-  label: "UFPS · Campus Principal",
-  lat: 7.8995,
-  lng: -72.4856,
+  label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta",
+  lat: 7.8939,
+  lng: -72.5078,
 };
 
 const CAPAS_OPCIONES: { id: Capa; label: string; icono: React.ReactNode }[] = [
@@ -293,6 +294,8 @@ export function PantallaCelular() {
             destino={destino}
             onOrigen={setOrigen}
             onDestino={setDestino}
+            onLimpiarOrigen={() => setOrigen(null)}
+            onLimpiarDestino={() => setDestino(null)}
             onInvertir={invertir}
             onPickEnMapa={setModoSeleccion}
             onUsarMiUbicacion={usarMiUbicacion}
@@ -643,6 +646,21 @@ export function PantallaCelular() {
         onDetenerNavegacion={detenerNavegacion}
         mostrarDatos={mostrarDatos}
         onMostrarDatos={setMostrarDatos}
+      />
+
+      {/* Panel lateral de datos (≥1024px) — el bottom sheet se usa en móvil */}
+      <PanelDatosDesktop
+        abierto={mostrarDatos && !!principal && !soloRuta}
+        onCerrar={() => setMostrarDatos(false)}
+        distanciaM={principal?.distancia ?? null}
+        duracionS={principal?.duracion ?? null}
+        duracionBaseS={principal?.duracionBase ?? null}
+        factorTrafico={principal?.factorTrafico ?? null}
+        nivelTrafico={principal?.nivelTrafico ?? null}
+        semaforos={principal?.semaforos ?? null}
+        densidadSemaforos={principal?.densidadSemaforos ?? null}
+        penalizacionSemaforosS={principal?.penalizacionSemaforosS ?? null}
+        clima={principal?.clima ?? null}
       />
     </div>
   );

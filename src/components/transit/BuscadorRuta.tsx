@@ -14,6 +14,8 @@ interface BuscadorRutaProps {
   destino: Punto | null;
   onOrigen: (p: Punto) => void;
   onDestino: (p: Punto) => void;
+  onLimpiarOrigen?: () => void;
+  onLimpiarDestino?: () => void;
   onInvertir: () => void;
   onPickEnMapa: (campo: "origen" | "destino") => void;
   onUsarMiUbicacion?: (campo: "origen" | "destino") => void;
@@ -27,7 +29,7 @@ interface BuscadorRutaProps {
 }
 
 const SUGERENCIAS_RAPIDAS: Punto[] = [
-  { label: "UFPS · Campus Principal", lat: 7.8995, lng: -72.4856 },
+  { label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta", lat: 7.8939, lng: -72.5078 },
   { label: "Ventura Plaza · Centro Comercial", lat: 7.8942, lng: -72.5043 },
   { label: "Parque Santander · Centro", lat: 7.8895, lng: -72.5052 },
   { label: "Jardín Plaza Cúcuta", lat: 7.9044, lng: -72.5026 },
@@ -39,6 +41,8 @@ export function BuscadorRuta({
   destino,
   onOrigen,
   onDestino,
+  onLimpiarOrigen,
+  onLimpiarDestino,
   onInvertir,
   onPickEnMapa,
   onUsarMiUbicacion,
@@ -94,7 +98,7 @@ export function BuscadorRuta({
   useEffect(() => {
     if (!foco) return;
     const q = queryActiva.trim();
-    if (q.length < 3) {
+    if (q.length < 2) {
       setResultados([]);
       return;
     }
@@ -103,6 +107,9 @@ export function BuscadorRuta({
       try {
         const r = await buscarLugares(q);
         setResultados(r);
+      } catch (err) {
+        console.error("[BuscadorRuta] error buscando lugares:", err);
+        setResultados([]);
       } finally {
         setCargando(false);
       }
@@ -143,8 +150,13 @@ export function BuscadorRuta({
   };
 
   const limpiarCampo = (campo: "origen" | "destino") => {
-    if (campo === "origen") setQOrigen("");
-    else setQDestino("");
+    if (campo === "origen") {
+      setQOrigen("");
+      onLimpiarOrigen?.();
+    } else {
+      setQDestino("");
+      onLimpiarDestino?.();
+    }
     setResultados([]);
     setFoco(campo);
     const r = campo === "origen" ? refOrigen : refDestino;
