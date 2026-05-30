@@ -647,6 +647,21 @@ export function PantallaCelular() {
         mostrarDatos={mostrarDatos}
         onMostrarDatos={setMostrarDatos}
       />
+
+      {/* Panel lateral de datos (≥1024px) — el bottom sheet se usa en móvil */}
+      <PanelDatosDesktop
+        abierto={mostrarDatos && !!principal && !soloRuta}
+        onCerrar={() => setMostrarDatos(false)}
+        distanciaM={principal?.distancia ?? null}
+        duracionS={principal?.duracion ?? null}
+        duracionBaseS={principal?.duracionBase ?? null}
+        factorTrafico={principal?.factorTrafico ?? null}
+        nivelTrafico={principal?.nivelTrafico ?? null}
+        semaforos={principal?.semaforos ?? null}
+        densidadSemaforos={principal?.densidadSemaforos ?? null}
+        penalizacionSemaforosS={principal?.penalizacionSemaforosS ?? null}
+        clima={principal?.clima ?? null}
+      />
     </div>
   );
 }
