@@ -293,6 +293,8 @@ export function PantallaCelular() {
             destino={destino}
             onOrigen={setOrigen}
             onDestino={setDestino}
+            onLimpiarOrigen={() => setOrigen(null)}
+            onLimpiarDestino={() => setDestino(null)}
             onInvertir={invertir}
             onPickEnMapa={setModoSeleccion}
             onUsarMiUbicacion={usarMiUbicacion}
