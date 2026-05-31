@@ -28,8 +28,8 @@ const ORIGEN_DEFAULT: Punto = {
 };
 const DESTINO_DEFAULT: Punto = {
   label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta",
-  lat: 7.8939,
-  lng: -72.5078,
+  lat: 7.898144,
+  lng: -72.488809,
 };
 
 const CAPAS_OPCIONES: { id: Capa; label: string; icono: React.ReactNode }[] = [
