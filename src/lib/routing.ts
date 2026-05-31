@@ -46,7 +46,7 @@ export interface RutaCalculada {
 const CUCUTA_VIEWBOX = "-72.60,7.99,-72.42,7.77";
 // Bounding-box estricto para validar coordenadas dentro del AMC
 export const AMC_BBOX = { south: 7.77, north: 7.99, west: -72.60, east: -72.42 };
-const CUCUTA_BOUNDS = { lat: 7.8939, lng: -72.5078 };
+const CUCUTA_BOUNDS = { lat: 7.898144, lng: -72.488809 };
 
 /** Verifica si un punto cae dentro del área metropolitana de Cúcuta. */
 export function dentroDelAMC(p: { lat: number; lng: number }): boolean {

@@ -121,7 +121,7 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
 ) {
   const center: LatLngExpression = origen
     ? [origen.lat, origen.lng]
-    : [7.8939, -72.5078];
+    : [7.898144, -72.488809];
 
   const colorPrincipal =
     algoritmo === "astar" ? "hsl(343 73% 31%)" : "hsl(217 91% 47%)";
@@ -144,7 +144,7 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
         },
         () => {
           // Si geolocalización falla (ej. preview), centramos en Cúcuta.
-          mapRef.current?.flyTo([7.8939, -72.5078], 14, { duration: 0.8 });
+          mapRef.current?.flyTo([7.898144, -72.488809], 14, { duration: 0.8 });
         },
         { enableHighAccuracy: true, timeout: 6000 },
       );
