@@ -7,6 +7,7 @@
 import { ArrowUpDown, Crosshair, MapPin, Loader2, Star, X, LocateFixed } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { buscarLugares, type Punto } from "@/lib/routing";
+import { POIS_CUCUTA, poiAPunto } from "@/lib/poisCucuta";
 import { cn } from "@/lib/utils";
 
 interface BuscadorRutaProps {
