@@ -489,6 +489,10 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
   const q = query.trim();
   if (q.length < 2) return [];
 
+  // (0) POIs locales — prioridad absoluta sobre Nominatim.
+  const { buscarPOIsLocales } = await import("./poisCucuta");
+  const poisLocales = buscarPOIsLocales(q);
+
   const parseada = parsearDireccionCO(q);
   const promesas: Promise<any[]>[] = [];
 
@@ -622,6 +626,14 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
     console.warn(
       `[buscarLugares] ${crudos.length} resultados crudos filtrados a 0. Query: "${q}"`,
     );
+  }
+
+  // POIs locales tienen prioridad absoluta. Deduplicamos por coords aproximadas.
+  if (poisLocales.length > 0) {
+    const claveCoord = (p: Punto) => `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
+    const setPois = new Set(poisLocales.map(claveCoord));
+    const restoSinDup = finales.filter((p) => !setPois.has(claveCoord(p)));
+    return [...poisLocales, ...restoSinDup].slice(0, 10);
   }
 
   return finales;

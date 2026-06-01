@@ -7,6 +7,7 @@
 import { ArrowUpDown, Crosshair, MapPin, Loader2, Star, X, LocateFixed } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { buscarLugares, type Punto } from "@/lib/routing";
+import { POIS_CUCUTA, poiAPunto } from "@/lib/poisCucuta";
 import { cn } from "@/lib/utils";
 
 interface BuscadorRutaProps {
@@ -28,13 +29,7 @@ interface BuscadorRutaProps {
   onEliminarFavorito?: (p: Punto) => void;
 }
 
-const SUGERENCIAS_RAPIDAS: Punto[] = [
-  { label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta", lat: 7.898144, lng: -72.488809 },
-  { label: "Ventura Plaza · Centro Comercial", lat: 7.8942, lng: -72.5043 },
-  { label: "Parque Santander · Centro", lat: 7.8895, lng: -72.5052 },
-  { label: "Jardín Plaza Cúcuta", lat: 7.9044, lng: -72.5026 },
-  { label: "Aeropuerto Camilo Daza", lat: 7.9275, lng: -72.5115 },
-];
+const SUGERENCIAS_RAPIDAS: Punto[] = POIS_CUCUTA.map(poiAPunto);
 
 export function BuscadorRuta({
   origen,
