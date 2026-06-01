@@ -489,6 +489,10 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
   const q = query.trim();
   if (q.length < 2) return [];
 
+  // (0) POIs locales — prioridad absoluta sobre Nominatim.
+  const { buscarPOIsLocales } = await import("./poisCucuta");
+  const poisLocales = buscarPOIsLocales(q);
+
   const parseada = parsearDireccionCO(q);
   const promesas: Promise<any[]>[] = [];
 
