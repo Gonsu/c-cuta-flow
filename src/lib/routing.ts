@@ -628,6 +628,14 @@ export async function buscarLugares(query: string): Promise<Punto[]> {
     );
   }
 
+  // POIs locales tienen prioridad absoluta. Deduplicamos por coords aproximadas.
+  if (poisLocales.length > 0) {
+    const claveCoord = (p: Punto) => `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
+    const setPois = new Set(poisLocales.map(claveCoord));
+    const restoSinDup = finales.filter((p) => !setPois.has(claveCoord(p)));
+    return [...poisLocales, ...restoSinDup].slice(0, 10);
+  }
+
   return finales;
 }
 
