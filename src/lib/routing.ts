@@ -4,6 +4,40 @@
  * y Nominatim (geocodificación / autocompletado) restringidos a Cúcuta.
  */
 
+/* ------------------------------------------------------------------ */
+/*  Compatibilidad Capacitor / Android — proxy CORS y headers          */
+/* ------------------------------------------------------------------ */
+
+/** Detecta si estamos corriendo dentro de un WebView nativo (Capacitor). */
+function esNativo(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as any;
+  if (w.Capacitor?.isNativePlatform?.()) return true;
+  // Fallback: protocolos usados por Capacitor en Android/iOS
+  const proto = window.location?.protocol ?? "";
+  if (proto === "capacitor:" || proto === "ionic:" || proto === "file:") return true;
+  // Heurística por user agent
+  return /(wv|; Android.*Version\/)/i.test(navigator.userAgent ?? "");
+}
+
+/**
+ * Envuelve una URL con un proxy CORS público cuando estamos en Android
+ * (Capacitor). Las APIs públicas como OSRM y Overpass no responden con
+ * cabeceras CORS válidas para orígenes `https://localhost` o `file://`.
+ */
+function proxyUrl(url: string): string {
+  if (!esNativo()) return url;
+  return `https://corsproxy.io/?${encodeURIComponent(url)}`;
+}
+
+/** Headers obligatorios para Nominatim (User-Agent identificable). */
+const NOMINATIM_HEADERS: Record<string, string> = {
+  "Accept-Language": "es",
+  "User-Agent": "CucutaSmartDrive/1.0 (com.optimizacionRed.gpsnav)",
+  Referer: "https://optimizacionred.com/",
+};
+
+
 export interface Punto {
   label: string;
   lat: number;
