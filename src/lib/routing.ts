@@ -316,7 +316,7 @@ export async function obtenerClimaCucuta(): Promise<ClimaCucuta> {
   );
   url.searchParams.set("timezone", "America/Bogota");
 
-  const res = await fetch(url.toString());
+  const res = await fetch(proxyUrl(url.toString()));
   if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
   const data = await res.json();
   const c = data.current ?? {};
