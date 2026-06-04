@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  X,
   CloudRain,
   Heart,
   Navigation,
@@ -637,7 +638,14 @@ export function PanelRuta({
 
         {/* Contenido desplegable — telemetría académica */}
         {expandido && (
-          <div className="mt-4 space-y-4 border-t border-border pt-4">
+          <div className="relative mt-4 space-y-4 border-t border-border pt-4">
+            <button
+              onClick={() => setExpandido(false)}
+              aria-label="Cerrar telemetría"
+              className="absolute right-0 top-3 flex size-7 items-center justify-center rounded-full text-ink-muted transition hover:bg-border hover:text-ink"
+            >
+              <X className="size-4" />
+            </button>
             {/* Selector */}
             <div>
               <p className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-widest text-ink-muted">
