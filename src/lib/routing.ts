@@ -683,8 +683,8 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   url.searchParams.set("format", "json");
   url.searchParams.set("zoom", "17");
   url.searchParams.set("addressdetails", "1");
-  const res = await fetch(url.toString(), {
-    headers: { "Accept-Language": "es" },
+  const res = await fetch(proxyUrl(url.toString()), {
+    headers: NOMINATIM_HEADERS,
   });
   if (!res.ok) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   const data = await res.json();
