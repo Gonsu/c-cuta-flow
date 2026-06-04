@@ -119,7 +119,7 @@ export async function calcularRutaOSRM(
     `?overview=full&geometries=geojson&alternatives=${altParam}` +
     `&continue_straight=false`;
 
-  const res = await fetch(url);
+  const res = await fetch(proxyUrl(url));
   if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
   const data = await res.json();
   if (!data.routes?.length) throw new Error("Sin rutas");
