@@ -282,7 +282,7 @@ async function contarSemaforosOverpass(
 node["highway"="traffic_signals"](${south},${west},${north},${east});
 out count;`;
 
-  const res = await fetch("https://overpass-api.de/api/interpreter", {
+  const res = await fetch(proxyUrl("https://overpass-api.de/api/interpreter"), {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=UTF-8" },
     body: query,
