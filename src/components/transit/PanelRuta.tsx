@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  X,
   CloudRain,
   Heart,
   Navigation,
