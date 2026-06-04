@@ -493,8 +493,8 @@ async function nominatimSearch(
     if (v) url.searchParams.set(k, v);
   }
   try {
-    const res = await fetch(url.toString(), {
-      headers: { "Accept-Language": "es" },
+    const res = await fetch(proxyUrl(url.toString()), {
+      headers: NOMINATIM_HEADERS,
     });
     if (!res.ok) {
       console.error(`[Nominatim] HTTP ${res.status} para`, params);
