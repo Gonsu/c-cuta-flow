@@ -4,6 +4,40 @@
  * y Nominatim (geocodificación / autocompletado) restringidos a Cúcuta.
  */
 
+/* ------------------------------------------------------------------ */
+/*  Compatibilidad Capacitor / Android — proxy CORS y headers          */
+/* ------------------------------------------------------------------ */
+
+/** Detecta si estamos corriendo dentro de un WebView nativo (Capacitor). */
+function esNativo(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as any;
+  if (w.Capacitor?.isNativePlatform?.()) return true;
+  // Fallback: protocolos usados por Capacitor en Android/iOS
+  const proto = window.location?.protocol ?? "";
+  if (proto === "capacitor:" || proto === "ionic:" || proto === "file:") return true;
+  // Heurística por user agent
+  return /(wv|; Android.*Version\/)/i.test(navigator.userAgent ?? "");
+}
+
+/**
+ * Envuelve una URL con un proxy CORS público cuando estamos en Android
+ * (Capacitor). Las APIs públicas como OSRM y Overpass no responden con
+ * cabeceras CORS válidas para orígenes `https://localhost` o `file://`.
+ */
+function proxyUrl(url: string): string {
+  if (!esNativo()) return url;
+  return `https://corsproxy.io/?${encodeURIComponent(url)}`;
+}
+
+/** Headers obligatorios para Nominatim (User-Agent identificable). */
+const NOMINATIM_HEADERS: Record<string, string> = {
+  "Accept-Language": "es",
+  "User-Agent": "CucutaSmartDrive/1.0 (com.optimizacionRed.gpsnav)",
+  Referer: "https://optimizacionred.com/",
+};
+
+
 export interface Punto {
   label: string;
   lat: number;
@@ -85,7 +119,7 @@ export async function calcularRutaOSRM(
     `?overview=full&geometries=geojson&alternatives=${altParam}` +
     `&continue_straight=false`;
 
-  const res = await fetch(url);
+  const res = await fetch(proxyUrl(url));
   if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
   const data = await res.json();
   if (!data.routes?.length) throw new Error("Sin rutas");
@@ -248,7 +282,7 @@ async function contarSemaforosOverpass(
 node["highway"="traffic_signals"](${south},${west},${north},${east});
 out count;`;
 
-  const res = await fetch("https://overpass-api.de/api/interpreter", {
+  const res = await fetch(proxyUrl("https://overpass-api.de/api/interpreter"), {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=UTF-8" },
     body: query,
@@ -282,7 +316,7 @@ export async function obtenerClimaCucuta(): Promise<ClimaCucuta> {
   );
   url.searchParams.set("timezone", "America/Bogota");
 
-  const res = await fetch(url.toString());
+  const res = await fetch(proxyUrl(url.toString()));
   if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
   const data = await res.json();
   const c = data.current ?? {};
@@ -459,8 +493,8 @@ async function nominatimSearch(
     if (v) url.searchParams.set(k, v);
   }
   try {
-    const res = await fetch(url.toString(), {
-      headers: { "Accept-Language": "es" },
+    const res = await fetch(proxyUrl(url.toString()), {
+      headers: NOMINATIM_HEADERS,
     });
     if (!res.ok) {
       console.error(`[Nominatim] HTTP ${res.status} para`, params);
@@ -649,8 +683,8 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string> 
   url.searchParams.set("format", "json");
   url.searchParams.set("zoom", "17");
   url.searchParams.set("addressdetails", "1");
-  const res = await fetch(url.toString(), {
-    headers: { "Accept-Language": "es" },
+  const res = await fetch(proxyUrl(url.toString()), {
+    headers: NOMINATIM_HEADERS,
   });
   if (!res.ok) return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
   const data = await res.json();
