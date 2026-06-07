@@ -17,15 +17,6 @@ export interface POICucuta {
 
 export const POIS_CUCUTA: POICucuta[] = [
   {
-    id: "ventura_plaza",
-    nombre: "Ventura Plaza",
-    lat: 7.8877370,
-    lng: -72.4966808,
-    categoria: "Centro Comercial",
-    direccion: "Calle 10 y 11, Sector Quinta Vélez, Cúcuta",
-    aliases: ["ventura plaza", "cc ventura", "ventura"],
-  },
-  {
     id: "jardin_plaza",
     nombre: "Jardín Plaza Cúcuta",
     lat: 7.9148,
