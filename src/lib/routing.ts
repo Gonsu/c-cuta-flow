@@ -210,42 +210,44 @@ function ajustarETA(
   const hora = ahora.getHours() + ahora.getMinutes() / 60;
   const diaSemana = ahora.getDay();
 
-  // 1) Tráfico urbano base
-  const fTraficoBase = 1.6;
+  // 1) Tráfico urbano base (calibrado para área metropolitana de Cúcuta)
+  const fTraficoBase = 1.2;
 
   // 2) Hora pico
   let fHora = 1.0;
   const esLaboral = diaSemana >= 1 && diaSemana <= 5;
   if (esLaboral) {
-    if (hora >= 6.5 && hora <= 8.5) fHora = 1.45;
-    else if (hora >= 11.5 && hora <= 13.5) fHora = 1.25;
-    else if (hora >= 17 && hora <= 19.5) fHora = 1.55;
-    else if (hora >= 22 || hora <= 5.5) fHora = 0.85;
+    if (hora >= 6.5 && hora <= 8.5) fHora = 1.25;
+    else if (hora >= 11.5 && hora <= 13.5) fHora = 1.15;
+    else if (hora >= 17 && hora <= 19.5) fHora = 1.3;
+    else if (hora >= 22 || hora <= 5.5) fHora = 0.9;
   } else {
-    if (hora >= 11 && hora <= 14) fHora = 1.2;
-    else if (hora >= 19 && hora <= 22) fHora = 1.15;
+    if (hora >= 11 && hora <= 14) fHora = 1.1;
+    else if (hora >= 19 && hora <= 22) fHora = 1.08;
   }
 
   // 3) Clima (Open-Meteo)
   const fClima = clima?.factorClima ?? 1.0;
 
-  // 4) Penalización por intersecciones (modelo no-lineal)
-  // Si Overpass falló: estimación por densidad urbana ≈ 2.2 sem/km
+  // 4) Penalización por intersecciones (modelo lineal acotado)
   const km = distanciaM / 1000;
   const semaforos = semaforosReales ?? Math.round(km * 2.2);
   const densidad = km > 0 ? semaforos / km : 0;
 
-  // Costo unitario por semáforo: 18 s base + bonus por congestión local.
-  // densidad alta ⇒ ondas verdes desincronizadas, costo crece logarítmicamente.
-  // Si el usuario pidió "Evitar semáforos", el costo unitario sube ~70 %
-  // para que el ranker prefiera rutas con menos intersecciones.
-  const refuerzo = evitarSemaforos ? 1.7 : 1.0;
+  // Costo unitario por semáforo: 8 s base, hasta ~14 s con densidad alta.
+  // "Evitar semáforos" aplica solo ~25 % de refuerzo para no inflar la ETA.
+  const refuerzo = evitarSemaforos ? 1.25 : 1.0;
   const costoUnitario =
-    (18 + 14 * Math.min(1, Math.log10(1 + densidad) / 0.6)) * refuerzo;
+    (8 + 6 * Math.min(1, Math.log10(1 + densidad) / 0.6)) * refuerzo;
   const penalizacionS = semaforos * costoUnitario;
 
   const factor = fTraficoBase * fHora * fClima;
-  const duracion = duracionBaseS * factor + penalizacionS;
+  let duracion = duracionBaseS * factor + penalizacionS;
+
+  // Tope para área metropolitana: ninguna ruta urbana razonable debe
+  // superar 45 minutos en condiciones normales.
+  const TOPE_S = 45 * 60;
+  if (duracion > TOPE_S) duracion = TOPE_S;
 
   // Velocidad media efectiva → clasificación cualitativa
   const velMedia = km > 0 ? km / (duracion / 3600) : 0;
