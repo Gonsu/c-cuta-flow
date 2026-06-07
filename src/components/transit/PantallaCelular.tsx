@@ -254,16 +254,7 @@ export function PantallaCelular() {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-paper">
-      {/* Status bar */}
-      <div className="absolute inset-x-0 top-0 z-[600] flex items-center justify-between px-7 pt-3 font-mono text-[11px] font-semibold tracking-tight text-ink">
-        <span>9:41</span>
-        <span className="flex items-center gap-1.5">
-          <span className="text-[9px] tracking-wider">5G</span>
-          <span className="block h-2.5 w-4 rounded-sm border border-ink">
-            <span className="block h-full w-3/4 bg-ink" />
-          </span>
-        </span>
-      </div>
+
 
       {/* Mapa */}
       <div className="absolute inset-0 pt-7">

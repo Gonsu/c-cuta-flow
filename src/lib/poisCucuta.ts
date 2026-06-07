@@ -10,11 +10,21 @@ export interface POICucuta {
   lat: number;
   lng: number;
   categoria: string;
+  direccion?: string;
   /** Alias adicionales para mejorar el matching parcial. */
   aliases?: string[];
 }
 
 export const POIS_CUCUTA: POICucuta[] = [
+  {
+    id: "ventura_plaza",
+    nombre: "Ventura Plaza",
+    lat: 7.8877370,
+    lng: -72.4966808,
+    categoria: "Centro Comercial",
+    direccion: "Calle 10 y 11, Sector Quinta Vélez, Cúcuta",
+    aliases: ["ventura plaza", "cc ventura", "ventura"],
+  },
   {
     id: "jardin_plaza",
     nombre: "Jardín Plaza Cúcuta",
@@ -26,9 +36,10 @@ export const POIS_CUCUTA: POICucuta[] = [
   {
     id: "unicentro",
     nombre: "Unicentro Cúcuta",
-    lat: 7.9087,
-    lng: -72.4958,
+    lat: 7.9168406,
+    lng: -72.4935577,
     categoria: "Centro Comercial",
+    direccion: "Av. Libertadores con Av. Canal Bogotá, Cúcuta",
     aliases: ["unicentro", "cc unicentro"],
   },
   {
@@ -42,9 +53,10 @@ export const POIS_CUCUTA: POICucuta[] = [
   {
     id: "terminal_cucuta",
     nombre: "Terminal de Transportes de Cúcuta",
-    lat: 7.8896,
-    lng: -72.5007,
+    lat: 7.8953,
+    lng: -72.5063,
     categoria: "Terminal",
+    direccion: "Av. 8 #1-25, Barrio El Callejón, Cúcuta",
     aliases: ["terminal", "terminal de transportes", "terminal cucuta"],
   },
   {
@@ -65,8 +77,9 @@ const normalizar = (s: string) =>
     .trim();
 
 export function poiAPunto(poi: POICucuta): Punto {
+  const sufijo = poi.direccion ? ` · ${poi.direccion}` : ` · ${poi.categoria}`;
   return {
-    label: `${poi.nombre} · ${poi.categoria}`,
+    label: `${poi.nombre}${sufijo}`,
     lat: poi.lat,
     lng: poi.lng,
   };
