@@ -161,7 +161,7 @@ export function PanelRuta({
   const [snapIdx, setSnapIdx] = useState(1);
   const [dragOffset, setDragOffset] = useState<number | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ startY: number; startTranslate: number } | null>(null);
+  const dragRef = useRef<{ startY: number; startTranslate: number; moved: boolean } | null>(null);
 
   const sheetHeight = sheetRef.current?.offsetHeight ?? 1;
   const translateY =
@@ -172,6 +172,7 @@ export function PanelRuta({
     dragRef.current = {
       startY: e.clientY,
       startTranslate: SNAPS[snapIdx] * h,
+      moved: false,
     };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
@@ -179,23 +180,30 @@ export function PanelRuta({
     if (!dragRef.current) return;
     const h = sheetRef.current?.offsetHeight ?? 1;
     const dy = e.clientY - dragRef.current.startY;
+    if (Math.abs(dy) > 4) dragRef.current.moved = true;
     const next = Math.max(0.02 * h, Math.min(0.92 * h, dragRef.current.startTranslate + dy));
     setDragOffset(next);
   };
   const onPointerUp = (e: React.PointerEvent) => {
     if (!dragRef.current) return;
     const h = sheetRef.current?.offsetHeight ?? 1;
-    const final = dragOffset ?? SNAPS[snapIdx] * h;
-    const ratio = final / h;
-    // snap más cercano
-    let best = 0;
-    let bestDist = Infinity;
-    SNAPS.forEach((s, i) => {
-      const d = Math.abs(s - ratio);
-      if (d < bestDist) { bestDist = d; best = i; }
-    });
-    setSnapIdx(best);
-    setDragOffset(null);
+    const moved = dragRef.current.moved;
+    if (!moved) {
+      // Tap: alterna entre medio/expandido (o sube si está colapsado)
+      setSnapIdx((i) => (i === 2 ? 1 : i === 1 ? 2 : 1));
+      setDragOffset(null);
+    } else {
+      const final = dragOffset ?? SNAPS[snapIdx] * h;
+      const ratio = final / h;
+      let best = 0;
+      let bestDist = Infinity;
+      SNAPS.forEach((s, i) => {
+        const d = Math.abs(s - ratio);
+        if (d < bestDist) { bestDist = d; best = i; }
+      });
+      setSnapIdx(best);
+      setDragOffset(null);
+    }
     dragRef.current = null;
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
   };
