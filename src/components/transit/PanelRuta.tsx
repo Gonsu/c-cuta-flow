@@ -248,12 +248,10 @@ export function PanelRuta({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        onClick={() => {
-          // Tap en el handle: alternar entre medio y expandido
-          setSnapIdx((i) => (i === 2 ? 1 : i === 1 ? 2 : 1));
-        }}
         className="flex cursor-grab touch-none select-none justify-center py-3 active:cursor-grabbing"
         style={{ touchAction: "none" }}
+        aria-label="Arrastra para expandir el panel"
+        role="button"
       >
         <span className="h-1.5 w-12 rounded-full bg-border" />
       </div>
