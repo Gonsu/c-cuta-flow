@@ -21,10 +21,10 @@ import {
 } from "@/lib/routing";
 import { toast } from "sonner";
 
-const ORIGEN_DEFAULT: Punto = {
-  label: "Ventura Plaza · Centro Comercial",
-  lat: 7.8942,
-  lng: -72.5043,
+const ORIGEN_PLACEHOLDER: Punto = {
+  label: "Obteniendo tu ubicación…",
+  lat: 7.8939,
+  lng: -72.5078,
 };
 const DESTINO_DEFAULT: Punto = {
   label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta",
@@ -41,10 +41,47 @@ const CAPAS_OPCIONES: { id: Capa; label: string; icono: React.ReactNode }[] = [
 ];
 
 export function PantallaCelular() {
-  const [origen, setOrigen] = useState<Punto | null>(ORIGEN_DEFAULT);
+  const [origen, setOrigen] = useState<Punto | null>(ORIGEN_PLACEHOLDER);
   const [destino, setDestino] = useState<Punto | null>(DESTINO_DEFAULT);
   const [algoritmo, setAlgoritmo] = useState<"astar" | "dijkstra">("astar");
   const [modoSeleccion, setModoSeleccion] = useState<"origen" | "destino" | null>(null);
+
+  // Al montar: intenta obtener la ubicación GPS y la usa como "Desde"
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setOrigen({ label: "Activa tu ubicación", lat: 7.8939, lng: -72.5078 });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setUbicacion({ lat: latitude, lng: longitude });
+        const dentro = dentroDelAMC({ lat: latitude, lng: longitude });
+        setOrigen({
+          label: dentro ? "Mi ubicación" : "Mi ubicación (fuera del AMC)",
+          lat: latitude,
+          lng: longitude,
+        });
+        if (dentro) {
+          reverseGeocode(latitude, longitude)
+            .then((label) =>
+              setOrigen((o) =>
+                o && o.label.startsWith("Mi ubicación")
+                  ? { label: `Mi ubicación · ${label}`, lat: latitude, lng: longitude }
+                  : o,
+              ),
+            )
+            .catch(() => {});
+        }
+      },
+      () => {
+        setOrigen({ label: "Activa tu ubicación", lat: 7.8939, lng: -72.5078 });
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30_000 },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // Modo en vivo y "evitar semáforos"
   const [enVivo, setEnVivo] = useState(false);
@@ -257,7 +294,7 @@ export function PantallaCelular() {
 
 
       {/* Mapa */}
-      <div className="absolute inset-0 pt-7">
+      <div className="absolute inset-0">
         <CucutaMap
           ref={mapaRef}
           algoritmo={algoritmo}
@@ -279,26 +316,24 @@ export function PantallaCelular() {
 
       {/* Buscador — oculto en modo solo-ruta */}
       {!soloRuta && (
-        <div className="pt-7">
-          <BuscadorRuta
-            origen={origen}
-            destino={destino}
-            onOrigen={setOrigen}
-            onDestino={setDestino}
-            onLimpiarOrigen={() => setOrigen(null)}
-            onLimpiarDestino={() => setDestino(null)}
-            onInvertir={invertir}
-            onPickEnMapa={setModoSeleccion}
-            onUsarMiUbicacion={usarMiUbicacion}
-            modoSeleccion={modoSeleccion}
-            abrirEn={abrirBuscadorEn}
-            onAbiertoConsumido={() => setAbrirBuscadorEn(null)}
-            favoritos={favs.lugares}
-            esLugarFavorito={favs.esLugarFavorito}
-            onToggleFavorito={favs.toggleLugar}
-            onEliminarFavorito={favs.eliminarLugar}
-          />
-        </div>
+        <BuscadorRuta
+          origen={origen}
+          destino={destino}
+          onOrigen={setOrigen}
+          onDestino={setDestino}
+          onLimpiarOrigen={() => setOrigen(null)}
+          onLimpiarDestino={() => setDestino(null)}
+          onInvertir={invertir}
+          onPickEnMapa={setModoSeleccion}
+          onUsarMiUbicacion={usarMiUbicacion}
+          modoSeleccion={modoSeleccion}
+          abrirEn={abrirBuscadorEn}
+          onAbiertoConsumido={() => setAbrirBuscadorEn(null)}
+          favoritos={favs.lugares}
+          esLugarFavorito={favs.esLugarFavorito}
+          onToggleFavorito={favs.toggleLugar}
+          onEliminarFavorito={favs.eliminarLugar}
+        />
       )}
 
       {/* Indicador modo selección */}
