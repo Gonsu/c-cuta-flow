@@ -19,7 +19,7 @@ import {
   TrafficCone,
   TrafficCone as ConeIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ClimaCucuta, RutaCalculada } from "@/lib/routing";
 
