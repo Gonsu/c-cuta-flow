@@ -185,7 +185,14 @@ export function BuscadorRuta({
   const mostrarFavs = favoritos.length > 0 && resultados.length === 0;
 
   return (
-    <div ref={contenedorRef} className="absolute inset-x-3 top-3 z-[500]">
+    <div
+      ref={contenedorRef}
+      className="fixed inset-x-3 z-[600]"
+      style={{
+        top: `calc(env(safe-area-inset-top) + 12px)`,
+        maxHeight: `calc(100dvh - env(safe-area-inset-top) - 24px - ${kbOffset}px)`,
+      }}
+    >
       <div className="overflow-hidden rounded-xl bg-surface shadow-elevated">
         <div className="relative flex items-stretch">
           <div className="flex flex-col items-center justify-center px-3 py-3">
