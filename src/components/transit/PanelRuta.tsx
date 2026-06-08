@@ -19,7 +19,7 @@ import {
   TrafficCone,
   TrafficCone as ConeIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import type { ClimaCucuta, RutaCalculada } from "@/lib/routing";
 
@@ -152,6 +152,62 @@ export function PanelRuta({
   const m = METRICAS[algoritmo];
   const intervaloS = Math.round((intervaloMs ?? 60_000) / 1000);
 
+  // ---- Bottom sheet arrastrable (3 snaps: colapsado / medio / expandido) ----
+  // Valores expresados como fracción de la altura del sheet a "ocultar" (translateY).
+  // 0   = totalmente visible (expandido)
+  // 0.55 = medio
+  // 0.88 = colapsado (solo handle + primera línea)
+  const SNAPS = [0.88, 0.55, 0.02];
+  const [snapIdx, setSnapIdx] = useState(1);
+  const [dragOffset, setDragOffset] = useState<number | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startY: number; startTranslate: number; moved: boolean } | null>(null);
+
+  const sheetHeight = sheetRef.current?.offsetHeight ?? 1;
+  const translateY =
+    dragOffset != null ? dragOffset : SNAPS[snapIdx] * sheetHeight;
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    const h = sheetRef.current?.offsetHeight ?? 1;
+    dragRef.current = {
+      startY: e.clientY,
+      startTranslate: SNAPS[snapIdx] * h,
+      moved: false,
+    };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const h = sheetRef.current?.offsetHeight ?? 1;
+    const dy = e.clientY - dragRef.current.startY;
+    if (Math.abs(dy) > 4) dragRef.current.moved = true;
+    const next = Math.max(0.02 * h, Math.min(0.92 * h, dragRef.current.startTranslate + dy));
+    setDragOffset(next);
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const h = sheetRef.current?.offsetHeight ?? 1;
+    const moved = dragRef.current.moved;
+    if (!moved) {
+      // Tap: alterna entre medio/expandido (o sube si está colapsado)
+      setSnapIdx((i) => (i === 2 ? 1 : i === 1 ? 2 : 1));
+      setDragOffset(null);
+    } else {
+      const final = dragOffset ?? SNAPS[snapIdx] * h;
+      const ratio = final / h;
+      let best = 0;
+      let bestDist = Infinity;
+      SNAPS.forEach((s, i) => {
+        const d = Math.abs(s - ratio);
+        if (d < bestDist) { bestDist = d; best = i; }
+      });
+      setSnapIdx(best);
+      setDragOffset(null);
+    }
+    dragRef.current = null;
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+  };
+
   const segundosDesdeUpdate =
     ultimaActualizacion != null
       ? Math.max(0, Math.floor((Date.now() - ultimaActualizacion) / 1000))
@@ -176,17 +232,34 @@ export function PanelRuta({
 
   return (
     <div
-      className={cn(
-        "absolute inset-x-0 bottom-0 z-[500] rounded-t-2xl border-t border-border bg-surface shadow-elevated transition-[max-height] duration-300",
-        expandido ? "max-h-[78%]" : "max-h-[44%]"
-      )}
+      ref={sheetRef}
+      className="fixed inset-x-0 bottom-0 z-[500] rounded-t-2xl border-t border-border bg-surface shadow-elevated"
+      style={{
+        height: "85dvh",
+        transform: `translateY(${translateY}px)`,
+        transition: dragOffset != null ? "none" : "transform 280ms cubic-bezier(0.22, 1, 0.36, 1)",
+        willChange: "transform",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
     >
-      {/* Handle */}
-      <div className="flex justify-center pt-2">
-        <span className="h-1 w-10 rounded-full bg-border" />
+      {/* Handle arrastrable */}
+      <div
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        className="flex cursor-grab touch-none select-none justify-center py-3 active:cursor-grabbing"
+        style={{ touchAction: "none" }}
+        aria-label="Arrastra para expandir el panel"
+        role="button"
+      >
+        <span className="h-1.5 w-12 rounded-full bg-border" />
       </div>
 
-      <div className="overflow-y-auto px-5 pb-5" style={{ maxHeight: expandido ? "calc(78vh - 16px)" : "auto" }}>
+      <div
+        className="overflow-y-auto px-5 pb-5"
+        style={{ maxHeight: "calc(85dvh - 36px - env(safe-area-inset-bottom))", overscrollBehavior: "contain" }}
+      >
         {/* Cabecera de la ruta */}
         <div className="pt-2">
           <div className="flex items-end justify-between">

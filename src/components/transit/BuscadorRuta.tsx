@@ -79,13 +79,36 @@ export function BuscadorRuta({
     onAbiertoConsumido?.();
   }, [abrirEn, onAbiertoConsumido]);
 
-  // Cerrar dropdown al hacer click afuera
+  // Ajuste cuando el teclado virtual aparece (Android/Capacitor):
+  // visualViewport reduce su altura → calculamos el offset y lo aplicamos
+  // como margen inferior para que el dropdown no quede oculto.
+  const [kbOffset, setKbOffset] = useState(0);
   useEffect(() => {
-    const onClick = (e: MouseEvent) => {
+    const vv = (window as any).visualViewport as VisualViewport | undefined;
+    if (!vv) return;
+    const onResize = () => {
+      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKbOffset(offset);
+    };
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+    };
+  }, []);
+
+  // Cerrar dropdown al hacer click/touch afuera
+  useEffect(() => {
+    const onPointer = (e: Event) => {
       if (!contenedorRef.current?.contains(e.target as Node)) setFoco(null);
     };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("touchstart", onPointer, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("touchstart", onPointer);
+    };
   }, []);
 
   // Debounce búsqueda Nominatim — basado en el campo enfocado
@@ -162,7 +185,14 @@ export function BuscadorRuta({
   const mostrarFavs = favoritos.length > 0 && resultados.length === 0;
 
   return (
-    <div ref={contenedorRef} className="absolute inset-x-3 top-3 z-[500]">
+    <div
+      ref={contenedorRef}
+      className="fixed inset-x-3 z-[600]"
+      style={{
+        top: `calc(env(safe-area-inset-top) + 12px)`,
+        maxHeight: `calc(100dvh - env(safe-area-inset-top) - 24px - ${kbOffset}px)`,
+      }}
+    >
       <div className="overflow-hidden rounded-xl bg-surface shadow-elevated">
         <div className="relative flex items-stretch">
           <div className="flex flex-col items-center justify-center px-3 py-3">
