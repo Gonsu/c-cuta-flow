@@ -79,13 +79,36 @@ export function BuscadorRuta({
     onAbiertoConsumido?.();
   }, [abrirEn, onAbiertoConsumido]);
 
-  // Cerrar dropdown al hacer click afuera
+  // Ajuste cuando el teclado virtual aparece (Android/Capacitor):
+  // visualViewport reduce su altura → calculamos el offset y lo aplicamos
+  // como margen inferior para que el dropdown no quede oculto.
+  const [kbOffset, setKbOffset] = useState(0);
   useEffect(() => {
-    const onClick = (e: MouseEvent) => {
+    const vv = (window as any).visualViewport as VisualViewport | undefined;
+    if (!vv) return;
+    const onResize = () => {
+      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKbOffset(offset);
+    };
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+    };
+  }, []);
+
+  // Cerrar dropdown al hacer click/touch afuera
+  useEffect(() => {
+    const onPointer = (e: Event) => {
       if (!contenedorRef.current?.contains(e.target as Node)) setFoco(null);
     };
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("mousedown", onPointer);
+    document.addEventListener("touchstart", onPointer, { passive: true });
+    return () => {
+      document.removeEventListener("mousedown", onPointer);
+      document.removeEventListener("touchstart", onPointer);
+    };
   }, []);
 
   // Debounce búsqueda Nominatim — basado en el campo enfocado
