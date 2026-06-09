@@ -516,163 +516,110 @@ function distCuadradaAlCentro(lat: number, lng: number) {
   return dLat * dLat + dLng * dLng;
 }
 
+/** Formatea propiedades de un feature de Photon en una etiqueta legible. */
+function formatearPhoton(props: any): string {
+  const partes: string[] = [];
+  const nombre = props.name;
+  const calle = props.street;
+  const numero = props.housenumber;
+  const barrio = props.district ?? props.suburb ?? props.locality;
+  const ciudad = (props.city ?? props.town ?? props.village ?? props.county ?? "").replace(
+    /^per[íi]metro urbano\s+/i,
+    "",
+  );
+  if (nombre && nombre !== calle) partes.push(nombre);
+  if (calle) partes.push(numero ? `${calle} #${numero}` : calle);
+  if (barrio && barrio !== nombre) partes.push(barrio);
+  if (ciudad) partes.push(ciudad);
+  if (partes.length === 0) return props.name ?? "Resultado";
+  const out: string[] = [];
+  for (const p of partes) if (out[out.length - 1] !== p) out.push(p);
+  return out.join(" · ");
+}
+
+/** Búsqueda primaria con Photon (Komoot) sesgada hacia Cúcuta. */
+async function buscarPhoton(q: string): Promise<Punto[]> {
+  const url = new URL("https://photon.komoot.io/api/");
+  url.searchParams.set("q", q);
+  url.searchParams.set("lat", "7.8939");
+  url.searchParams.set("lon", "-72.5078");
+  url.searchParams.set("limit", "5");
+  url.searchParams.set("lang", "es");
+  try {
+    const res = await fetch(proxyUrl(url.toString()));
+    if (!res.ok) return [];
+    const data = await res.json();
+    const feats = Array.isArray(data?.features) ? data.features : [];
+    const out: Punto[] = [];
+    for (const f of feats) {
+      const [lng, lat] = f.geometry?.coordinates ?? [];
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      const props = f.properties ?? {};
+      // Filtra a Colombia / Norte de Santander cuando esa info esté disponible.
+      const cc = (props.countrycode ?? "").toString().toUpperCase();
+      if (cc && cc !== "CO") continue;
+      out.push({ label: formatearPhoton(props), lat, lng });
+    }
+    return out;
+  } catch (err) {
+    console.warn("[Photon] error:", err);
+    return [];
+  }
+}
+
+/** Fallback: Nominatim restringido a Cúcuta (countrycodes + viewbox bounded). */
+async function buscarNominatimFallback(q: string): Promise<Punto[]> {
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("q", q);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("limit", "5");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("countrycodes", "co");
+  url.searchParams.set("viewbox", "-72.55,7.85,-72.45,7.95");
+  url.searchParams.set("bounded", "1");
+  try {
+    const res = await fetch(proxyUrl(url.toString()), { headers: NOMINATIM_HEADERS });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    return data
+      .map((d: any) => {
+        const lat = parseFloat(d.lat);
+        const lng = parseFloat(d.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        return { label: formatearDireccion(d), lat, lng } as Punto;
+      })
+      .filter((p): p is Punto => p !== null);
+  } catch (err) {
+    console.warn("[Nominatim fallback] error:", err);
+    return [];
+  }
+}
+
 /**
- * Autocompletado tipo Google Maps Place Autocomplete, restringido al AMC.
- * Combina búsqueda estructurada (street + city) con búsquedas libres,
- * tolera typos y rankea por proximidad a Cúcuta.
+ * Autocompletado de direcciones — Photon primario, Nominatim como fallback.
+ * Requiere mínimo 3 caracteres. Resultados sesgados al área de Cúcuta.
  */
 export async function buscarLugares(query: string): Promise<Punto[]> {
   const q = query.trim();
-  if (q.length < 2) return [];
+  if (q.length < 3) return [];
 
-  // (0) POIs locales — prioridad absoluta sobre Nominatim.
+  // (0) POIs locales — siempre tienen prioridad.
   const { buscarPOIsLocales } = await import("./poisCucuta");
   const poisLocales = buscarPOIsLocales(q);
 
-  const parseada = parsearDireccionCO(q);
-  const promesas: Promise<any[]>[] = [];
-
-  // (a) Búsqueda estructurada — usa parámetros separados (la más precisa).
-  if (parseada.esDireccion && parseada.calle) {
-    const ciudad = parseada.municipio ?? "Cúcuta";
-    promesas.push(
-      nominatimSearch(
-        {
-          street: parseada.calle,
-          city: ciudad,
-          county: "Cúcuta",
-          state: "Norte de Santander",
-          country: "Colombia",
-        },
-        { bounded: false, limit: 6 },
-      ),
-    );
-    if (parseada.barrio) {
-      promesas.push(
-        nominatimSearch(
-          {
-            street: `${parseada.calle} ${parseada.barrio}`,
-            city: ciudad,
-            state: "Norte de Santander",
-            country: "Colombia",
-          },
-          { bounded: false, limit: 6 },
-        ),
-      );
-    }
+  // (1) Photon primario
+  let externos = await buscarPhoton(q);
+  // (2) Fallback Nominatim si Photon no aportó resultados.
+  if (externos.length === 0) {
+    externos = await buscarNominatimFallback(q);
   }
 
-  // (b) Búsqueda libre — query crudo + variantes con ciudad.
-  const ciudadHint = parseada.municipio ?? "Cúcuta";
-  const libres = [
-    q,
-    `${q}, ${ciudadHint}, Norte de Santander, Colombia`,
-  ];
-  if (parseada.esDireccion && parseada.calle) {
-    const completo = parseada.barrio
-      ? `${parseada.calle}, ${parseada.barrio}, ${ciudadHint}`
-      : `${parseada.calle}, ${ciudadHint}`;
-    libres.push(`${completo}, Norte de Santander, Colombia`);
-  }
-  for (const v of libres) {
-    promesas.push(nominatimSearch({ q: v }, { bounded: true, limit: 6 }));
-  }
-  // (c) Variantes sin bounded para tolerar coincidencias parciales.
-  promesas.push(nominatimSearch({ q: `${q}, Cúcuta` }, { bounded: false, limit: 6 }));
-  promesas.push(nominatimSearch({ q: `${q}, Norte de Santander, Colombia` }, { bounded: false, limit: 6 }));
-
-  const lotes = await Promise.all(promesas);
-  const crudos = lotes.flat();
-
-  if (crudos.length === 0) {
-    console.warn("[buscarLugares] Nominatim no devolvió resultados para:", q);
-  }
-
-  const tokens = q
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .split(/\s+/)
-    .filter((t) => t.length >= 3);
-
-  type Cand = { p: Punto; score: number };
-  const vistos = new Map<string, Cand>();
-
-  // Bounding box ampliado (~5km) para tolerar resultados justo en el borde.
-  const margen = 0.05;
-  const bboxAmplio = {
-    south: AMC_BBOX.south - margen,
-    north: AMC_BBOX.north + margen,
-    west: AMC_BBOX.west - margen,
-    east: AMC_BBOX.east + margen,
-  };
-
-  for (const d of crudos) {
-    const lat = parseFloat(d.lat);
-    const lng = parseFloat(d.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-    // Aceptamos resultados dentro del bbox ampliado O en Norte de Santander.
-    const addr = d.address ?? {};
-    const enBbox =
-      lat >= bboxAmplio.south &&
-      lat <= bboxAmplio.north &&
-      lng >= bboxAmplio.west &&
-      lng <= bboxAmplio.east;
-    const estado = (addr.state ?? "").toString().toLowerCase();
-    const enEstado = estado.includes("santander") || estado.includes("norte de santander");
-    if (!enBbox && !enEstado) continue;
-
-    const key =
-      d.osm_id != null
-        ? `${d.osm_type}-${d.osm_id}`
-        : `${lat.toFixed(5)}-${lng.toFixed(5)}`;
-
-    const display = (d.display_name ?? "").toLowerCase();
-    const matches = tokens.reduce(
-      (acc, t) => acc + (display.includes(t) ? 1 : 0),
-      0,
-    );
-    const tipo = (d.addresstype ?? d.class ?? "").toString();
-    const tipoBonus =
-      tipo === "road" || tipo === "house" || tipo === "highway" ? 0.5 : 0;
-    const dist = distCuadradaAlCentro(lat, lng);
-    const dentroBonus = dentroDelAMC({ lat, lng }) ? 0.4 : 0;
-    const score =
-      (Number(d.importance) || 0) +
-      matches * 0.3 +
-      tipoBonus +
-      dentroBonus -
-      dist * 50;
-
-    const prev = vistos.get(key);
-    if (!prev || score > prev.score) {
-      vistos.set(key, {
-        p: { label: formatearDireccion(d), lat, lng },
-        score,
-      });
-    }
-  }
-
-  const finales = Array.from(vistos.values())
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
-    .map((c) => c.p);
-
-  if (finales.length === 0 && crudos.length > 0) {
-    console.warn(
-      `[buscarLugares] ${crudos.length} resultados crudos filtrados a 0. Query: "${q}"`,
-    );
-  }
-
-  // POIs locales tienen prioridad absoluta. Deduplicamos por coords aproximadas.
-  if (poisLocales.length > 0) {
-    const claveCoord = (p: Punto) => `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
-    const setPois = new Set(poisLocales.map(claveCoord));
-    const restoSinDup = finales.filter((p) => !setPois.has(claveCoord(p)));
-    return [...poisLocales, ...restoSinDup].slice(0, 10);
-  }
-
-  return finales;
+  if (poisLocales.length === 0) return externos.slice(0, 5);
+  const claveCoord = (p: Punto) => `${p.lat.toFixed(4)}_${p.lng.toFixed(4)}`;
+  const setPois = new Set(poisLocales.map(claveCoord));
+  const merged = [...poisLocales, ...externos.filter((p) => !setPois.has(claveCoord(p)))];
+  return merged.slice(0, 8);
 }
 
 /**
