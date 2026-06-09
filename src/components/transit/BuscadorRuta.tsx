@@ -398,7 +398,7 @@ export function BuscadorRuta({
             <p className="mt-2 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-ink-muted">
               {resultados.length > 0
                 ? "Sugerencias"
-                : queryActiva.trim().length >= 2
+                : queryActiva.trim().length >= 3
                 ? "Sin coincidencias — prueba otra dirección"
                 : "Lugares populares"}
             </p>
