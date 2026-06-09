@@ -5,13 +5,16 @@
  * comparación "evitar semáforos".
  */
 import { useEffect, useRef, useState } from "react";
-import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map as MapIcon, Star, X, Pencil, Check, MapPin } from "lucide-react";
+import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map as MapIcon, Star, X, Pencil, Check, MapPin, Clock, Info, GraduationCap } from "lucide-react";
 import { CucutaMap, type CucutaMapHandle, type Capa } from "./CucutaMap";
 import { BuscadorRuta } from "./BuscadorRuta";
 import { PanelRuta } from "./PanelRuta";
 import { PanelDatosDesktop } from "./PanelDatosDesktop";
+import { PanelHistorial } from "./PanelHistorial";
+import { PanelAcercaDe } from "./PanelAcercaDe";
 import { useRuta } from "@/hooks/useRuta";
 import { useFavoritos } from "@/hooks/useFavoritos";
+import { useHistorial } from "@/hooks/useHistorial";
 import {
   calcularRutaOSRM,
   reverseGeocode,
@@ -107,6 +110,9 @@ export function PantallaCelular() {
   const mapaRef = useRef<CucutaMapHandle>(null);
 
   const favs = useFavoritos();
+  const historial = useHistorial();
+  const [panelHistorial, setPanelHistorial] = useState(false);
+  const [panelAcerca, setPanelAcerca] = useState(false);
 
   const {
     rutas,
@@ -118,6 +124,49 @@ export function PantallaCelular() {
     error,
     ultimaActualizacion,
   } = useRuta(origen, destino, { evitarSemaforos, live: enVivo, liveIntervalMs: intervaloMs });
+
+  // Guarda en historial cuando hay una ruta principal recién calculada.
+  const ultRutaIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!principal || !origen || !destino) return;
+    const id = `${origen.lat.toFixed(4)}_${origen.lng.toFixed(4)}__${destino.lat.toFixed(4)}_${destino.lng.toFixed(4)}`;
+    if (ultRutaIdRef.current === id) return;
+    ultRutaIdRef.current = id;
+    historial.agregar(origen, destino, principal.duracion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [principal, origen, destino]);
+
+  /** Rellena destino con UFPS y, si hay GPS, también origen, para calcular la ruta. */
+  const irAlaUFPS = () => {
+    setDestino({
+      label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta",
+      lat: 7.8939,
+      lng: -72.5078,
+    });
+    if (!navigator.geolocation) {
+      toast.info("Activa el GPS para calcular la ruta desde tu ubicación");
+      return;
+    }
+    const tid = toast.loading("Obteniendo tu ubicación…");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setUbicacion({ lat: latitude, lng: longitude });
+        setOrigen({ label: "Mi ubicación", lat: latitude, lng: longitude });
+        try {
+          const label = await reverseGeocode(latitude, longitude);
+          setOrigen({ label: `Mi ubicación · ${label}`, lat: latitude, lng: longitude });
+        } catch { /* ignore */ }
+        toast.dismiss(tid);
+        toast.success("Calculando ruta a la UFPS…");
+      },
+      () => {
+        toast.dismiss(tid);
+        toast.error("No se pudo obtener tu ubicación");
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 10_000 },
+    );
+  };
 
   const iniciarNavegacion = () => {
     if (!navigator.geolocation) {
@@ -409,7 +458,58 @@ export function PantallaCelular() {
             )}
           </button>
         )}
+        {!soloRuta && (
+          <button
+            onClick={() => {
+              setPanelHistorial((v) => !v);
+              setPanelFavoritas(false);
+              setPanelAcerca(false);
+            }}
+            className={`flex size-10 items-center justify-center rounded-full shadow-elevated transition ${
+              panelHistorial ? "bg-primary text-primary-foreground" : "bg-surface text-ink hover:bg-paper"
+            }`}
+            aria-label="Historial de rutas"
+          >
+            <Clock className="size-4" />
+          </button>
+        )}
+        {!soloRuta && (
+          <button
+            onClick={() => setPanelAcerca(true)}
+            className="flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-elevated transition hover:bg-paper"
+            aria-label="Acerca de"
+          >
+            <Info className="size-4" />
+          </button>
+        )}
       </div>
+
+      {/* Botón flotante: ¿Cómo llegar a la UFPS? */}
+      {!soloRuta && (
+        <button
+          onClick={irAlaUFPS}
+          className="absolute left-1/2 z-[550] flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-white shadow-elevated transition hover:opacity-90"
+          style={{ top: "10.5rem", background: "#8A1538" }}
+        >
+          <GraduationCap className="size-4" />
+          ¿Cómo llegar a la UFPS?
+        </button>
+      )}
+
+      {panelHistorial && !soloRuta && (
+        <PanelHistorial
+          items={historial.items}
+          onCerrar={() => setPanelHistorial(false)}
+          onLimpiar={historial.limpiar}
+          onSeleccionar={(e) => {
+            setOrigen(e.origen);
+            setDestino(e.destino);
+            setPanelHistorial(false);
+          }}
+        />
+      )}
+
+      {panelAcerca && <PanelAcercaDe onCerrar={() => setPanelAcerca(false)} />}
 
 
       {/* Panel de favoritos: pestañas Rutas / Lugares guardados */}
