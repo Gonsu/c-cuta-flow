@@ -116,7 +116,7 @@ export function BuscadorRuta({
   useEffect(() => {
     if (!foco) return;
     const q = queryActiva.trim();
-    if (q.length < 2) {
+    if (q.length < 3) {
       setResultados([]);
       return;
     }
