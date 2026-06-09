@@ -5,13 +5,16 @@
  * comparación "evitar semáforos".
  */
 import { useEffect, useRef, useState } from "react";
-import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map as MapIcon, Star, X, Pencil, Check, MapPin } from "lucide-react";
+import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map as MapIcon, Star, X, Pencil, Check, MapPin, Clock, Info, GraduationCap } from "lucide-react";
 import { CucutaMap, type CucutaMapHandle, type Capa } from "./CucutaMap";
 import { BuscadorRuta } from "./BuscadorRuta";
 import { PanelRuta } from "./PanelRuta";
 import { PanelDatosDesktop } from "./PanelDatosDesktop";
+import { PanelHistorial } from "./PanelHistorial";
+import { PanelAcercaDe } from "./PanelAcercaDe";
 import { useRuta } from "@/hooks/useRuta";
 import { useFavoritos } from "@/hooks/useFavoritos";
+import { useHistorial } from "@/hooks/useHistorial";
 import {
   calcularRutaOSRM,
   reverseGeocode,
