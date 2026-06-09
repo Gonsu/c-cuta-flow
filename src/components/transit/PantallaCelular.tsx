@@ -458,7 +458,58 @@ export function PantallaCelular() {
             )}
           </button>
         )}
+        {!soloRuta && (
+          <button
+            onClick={() => {
+              setPanelHistorial((v) => !v);
+              setPanelFavoritas(false);
+              setPanelAcerca(false);
+            }}
+            className={`flex size-10 items-center justify-center rounded-full shadow-elevated transition ${
+              panelHistorial ? "bg-primary text-primary-foreground" : "bg-surface text-ink hover:bg-paper"
+            }`}
+            aria-label="Historial de rutas"
+          >
+            <Clock className="size-4" />
+          </button>
+        )}
+        {!soloRuta && (
+          <button
+            onClick={() => setPanelAcerca(true)}
+            className="flex size-10 items-center justify-center rounded-full bg-surface text-ink shadow-elevated transition hover:bg-paper"
+            aria-label="Acerca de"
+          >
+            <Info className="size-4" />
+          </button>
+        )}
       </div>
+
+      {/* Botón flotante: ¿Cómo llegar a la UFPS? */}
+      {!soloRuta && (
+        <button
+          onClick={irAlaUFPS}
+          className="absolute left-1/2 z-[550] flex -translate-x-1/2 items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-white shadow-elevated transition hover:opacity-90"
+          style={{ top: "10.5rem", background: "#8A1538" }}
+        >
+          <GraduationCap className="size-4" />
+          ¿Cómo llegar a la UFPS?
+        </button>
+      )}
+
+      {panelHistorial && !soloRuta && (
+        <PanelHistorial
+          items={historial.items}
+          onCerrar={() => setPanelHistorial(false)}
+          onLimpiar={historial.limpiar}
+          onSeleccionar={(e) => {
+            setOrigen(e.origen);
+            setDestino(e.destino);
+            setPanelHistorial(false);
+          }}
+        />
+      )}
+
+      {panelAcerca && <PanelAcercaDe onCerrar={() => setPanelAcerca(false)} />}
 
 
       {/* Panel de favoritos: pestañas Rutas / Lugares guardados */}
