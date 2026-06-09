@@ -110,6 +110,9 @@ export function PantallaCelular() {
   const mapaRef = useRef<CucutaMapHandle>(null);
 
   const favs = useFavoritos();
+  const historial = useHistorial();
+  const [panelHistorial, setPanelHistorial] = useState(false);
+  const [panelAcerca, setPanelAcerca] = useState(false);
 
   const {
     rutas,
@@ -121,6 +124,49 @@ export function PantallaCelular() {
     error,
     ultimaActualizacion,
   } = useRuta(origen, destino, { evitarSemaforos, live: enVivo, liveIntervalMs: intervaloMs });
+
+  // Guarda en historial cuando hay una ruta principal recién calculada.
+  const ultRutaIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!principal || !origen || !destino) return;
+    const id = `${origen.lat.toFixed(4)}_${origen.lng.toFixed(4)}__${destino.lat.toFixed(4)}_${destino.lng.toFixed(4)}`;
+    if (ultRutaIdRef.current === id) return;
+    ultRutaIdRef.current = id;
+    historial.agregar(origen, destino, principal.duracion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [principal, origen, destino]);
+
+  /** Rellena destino con UFPS y, si hay GPS, también origen, para calcular la ruta. */
+  const irAlaUFPS = () => {
+    setDestino({
+      label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta",
+      lat: 7.8939,
+      lng: -72.5078,
+    });
+    if (!navigator.geolocation) {
+      toast.info("Activa el GPS para calcular la ruta desde tu ubicación");
+      return;
+    }
+    const tid = toast.loading("Obteniendo tu ubicación…");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setUbicacion({ lat: latitude, lng: longitude });
+        setOrigen({ label: "Mi ubicación", lat: latitude, lng: longitude });
+        try {
+          const label = await reverseGeocode(latitude, longitude);
+          setOrigen({ label: `Mi ubicación · ${label}`, lat: latitude, lng: longitude });
+        } catch { /* ignore */ }
+        toast.dismiss(tid);
+        toast.success("Calculando ruta a la UFPS…");
+      },
+      () => {
+        toast.dismiss(tid);
+        toast.error("No se pudo obtener tu ubicación");
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 10_000 },
+    );
+  };
 
   const iniciarNavegacion = () => {
     if (!navigator.geolocation) {
