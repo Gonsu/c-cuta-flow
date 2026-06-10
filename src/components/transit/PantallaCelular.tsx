@@ -93,6 +93,7 @@ export function PantallaCelular() {
 
   // Navegación turn-by-turn con geolocalización del dispositivo
   const [navegando, setNavegando] = useState(false);
+  const [heading, setHeading] = useState<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
 
   // Mostrar/ocultar bloque de datos (distancia, tráfico, clima, semáforos)
@@ -136,32 +137,26 @@ export function PantallaCelular() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [principal, origen, destino]);
 
-  /** Rellena destino con UFPS y, si hay GPS, también origen, para calcular la ruta. */
+  /** Rellena destino con UFPS (datos hardcodeados, sin geocodificación). */
   const irAlaUFPS = () => {
-    setDestino({
-      label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta",
+    const UFPS: Punto = {
+      label: "UFPS · Campus Principal · Calle 2 11a E-46, Quinta Oriental, Cúcuta",
       lat: 7.8939,
       lng: -72.5078,
-    });
+    };
+    setDestino(UFPS);
     if (!navigator.geolocation) {
       toast.info("Activa el GPS para calcular la ruta desde tu ubicación");
       return;
     }
-    const tid = toast.loading("Obteniendo tu ubicación…");
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      (pos) => {
         const { latitude, longitude } = pos.coords;
         setUbicacion({ lat: latitude, lng: longitude });
         setOrigen({ label: "Mi ubicación", lat: latitude, lng: longitude });
-        try {
-          const label = await reverseGeocode(latitude, longitude);
-          setOrigen({ label: `Mi ubicación · ${label}`, lat: latitude, lng: longitude });
-        } catch { /* ignore */ }
-        toast.dismiss(tid);
         toast.success("Calculando ruta a la UFPS…");
       },
       () => {
-        toast.dismiss(tid);
         toast.error("No se pudo obtener tu ubicación");
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 10_000 },
@@ -181,8 +176,11 @@ export function PantallaCelular() {
     setEnVivo(true);
     const id = navigator.geolocation.watchPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, heading: h } = pos.coords;
         setUbicacion({ lat: latitude, lng: longitude });
+        if (typeof h === "number" && !Number.isNaN(h)) {
+          setHeading(h);
+        }
         if (dentroDelAMC({ lat: latitude, lng: longitude })) {
           setOrigen({ label: "Tu ubicación", lat: latitude, lng: longitude });
         }
@@ -360,6 +358,8 @@ export function PantallaCelular() {
           onSeleccionMapa={handleSeleccionMapa}
           onUbicacion={(lat, lng) => setUbicacion({ lat, lng })}
           ubicacionUsuario={ubicacion}
+          navegando={navegando}
+          heading={heading}
         />
       </div>
 
