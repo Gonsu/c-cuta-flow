@@ -367,6 +367,10 @@ export function PantallaCelular() {
           ubicacionUsuario={ubicacion}
           navegando={navegando}
           heading={heading}
+          seguirUsuario={seguirUsuario && navegando}
+          onUsuarioMovioMapa={() => {
+            if (navegando && seguirUsuario) setSeguirUsuario(false);
+          }}
         />
       </div>
 
