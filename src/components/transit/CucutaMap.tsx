@@ -95,7 +95,9 @@ export interface CucutaMapHandle {
   locateMe: () => void;
   setLayer: (c: Capa) => void;
   getLayer: () => Capa;
+  centerOnUser: (zoom?: number) => void;
 }
+
 
 interface RutaParaMapa {
   coords: [number, number][];
@@ -119,6 +121,10 @@ interface CucutaMapProps {
   /** Si está navegando, dibuja flecha de heading y divide la ruta en recorrida/pendiente. */
   navegando?: boolean;
   heading?: number | null;
+  /** Si true, el mapa sigue automáticamente la ubicación del usuario. */
+  seguirUsuario?: boolean;
+  /** Se dispara cuando el usuario arrastra el mapa manualmente. */
+  onUsuarioMovioMapa?: () => void;
 }
 
 export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function CucutaMap(
@@ -135,6 +141,8 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
     ubicacionUsuario,
     navegando = false,
     heading = null,
+    seguirUsuario = false,
+    onUsuarioMovioMapa,
   },
   ref,
 ) {
@@ -158,6 +166,11 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
     zoomOut: () => mapRef.current?.zoomOut(),
     setLayer: (c: Capa) => setCapa(c),
     getLayer: () => capa,
+    centerOnUser: (zoom = 17) => {
+      const m = mapRef.current;
+      if (!m || !ubicacionUsuario) return;
+      m.flyTo([ubicacionUsuario.lat, ubicacionUsuario.lng], zoom, { duration: 0.6 });
+    },
     locateMe: () => {
       if (!navigator.geolocation) return;
       navigator.geolocation.getCurrentPosition(
@@ -174,6 +187,7 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
       );
     },
   }));
+
 
   const cfg = CAPAS[capa];
 
@@ -200,6 +214,13 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
       />
 
       <ClickHandler enabled={!!modoSeleccion} onClick={onSeleccionMapa} />
+
+      <FollowAndDrag
+        ubicacion={ubicacionUsuario ?? null}
+        seguir={seguirUsuario}
+        onDragManual={onUsuarioMovioMapa}
+      />
+
 
       {/* Ruta de comparación (ej. "evitando semáforos") por debajo de la principal */}
       {rutaComparacion && (
@@ -304,5 +325,37 @@ function FitBounds({ positions }: { positions: [number, number][] | null }) {
     const bounds = L.latLngBounds(positions as L.LatLngTuple[]);
     map.fitBounds(bounds, { padding: [70, 70] });
   }, [map, positions]);
+  return null;
+}
+
+function FollowAndDrag({
+  ubicacion,
+  seguir,
+  onDragManual,
+}: {
+  ubicacion: { lat: number; lng: number } | null;
+  seguir: boolean;
+  onDragManual?: () => void;
+}) {
+  const map = useMap();
+  const programaticoRef = useRef(false);
+
+  useMapEvents({
+    dragstart() {
+      if (programaticoRef.current) return;
+      onDragManual?.();
+    },
+  });
+
+  useEffect(() => {
+    if (!seguir || !ubicacion) return;
+    programaticoRef.current = true;
+    map.panTo([ubicacion.lat, ubicacion.lng], { animate: true, duration: 0.5 });
+    const t = window.setTimeout(() => {
+      programaticoRef.current = false;
+    }, 700);
+    return () => window.clearTimeout(t);
+  }, [map, seguir, ubicacion?.lat, ubicacion?.lng]);
+
   return null;
 }

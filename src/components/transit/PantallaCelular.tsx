@@ -5,7 +5,7 @@
  * comparación "evitar semáforos".
  */
 import { useEffect, useRef, useState } from "react";
-import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map as MapIcon, Star, X, Pencil, Check, MapPin, Clock, Info, GraduationCap } from "lucide-react";
+import { Layers, Locate, Plus, Minus, Mountain, Satellite, Bus, TrafficCone, Map as MapIcon, Star, X, Pencil, Check, MapPin, Clock, Info, GraduationCap, Crosshair } from "lucide-react";
 import { CucutaMap, type CucutaMapHandle, type Capa } from "./CucutaMap";
 import { BuscadorRuta } from "./BuscadorRuta";
 import { PanelRuta } from "./PanelRuta";
@@ -94,6 +94,7 @@ export function PantallaCelular() {
   // Navegación turn-by-turn con geolocalización del dispositivo
   const [navegando, setNavegando] = useState(false);
   const [heading, setHeading] = useState<number | null>(null);
+  const [seguirUsuario, setSeguirUsuario] = useState(false);
   const watchIdRef = useRef<number | null>(null);
 
   // Mostrar/ocultar bloque de datos (distancia, tráfico, clima, semáforos)
@@ -174,6 +175,7 @@ export function PantallaCelular() {
     }
     setNavegando(true);
     setEnVivo(true);
+    setSeguirUsuario(true);
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, heading: h } = pos.coords;
@@ -193,6 +195,10 @@ export function PantallaCelular() {
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 },
     );
     watchIdRef.current = id;
+    // Auto-centrar al iniciar la navegación (espera el primer fix si hace falta)
+    window.setTimeout(() => {
+      mapaRef.current?.centerOnUser(17);
+    }, 400);
     toast.success("Navegación iniciada", {
       description: "Siguiendo tu ubicación en tiempo real",
     });
@@ -204,6 +210,7 @@ export function PantallaCelular() {
     }
     watchIdRef.current = null;
     setNavegando(false);
+    setSeguirUsuario(false);
   };
 
   useEffect(() => {
@@ -360,6 +367,10 @@ export function PantallaCelular() {
           ubicacionUsuario={ubicacion}
           navegando={navegando}
           heading={heading}
+          seguirUsuario={seguirUsuario && navegando}
+          onUsuarioMovioMapa={() => {
+            if (navegando && seguirUsuario) setSeguirUsuario(false);
+          }}
         />
       </div>
 
@@ -706,6 +717,21 @@ export function PantallaCelular() {
       )}
 
 
+
+      {/* Botón centrar mapa durante navegación */}
+      {navegando && (
+        <button
+          onClick={() => {
+            setSeguirUsuario(true);
+            mapaRef.current?.centerOnUser(17);
+          }}
+          aria-label="Centrar en mi ubicación"
+          className="absolute bottom-[calc(46%+5rem)] right-3 z-[500] flex size-11 items-center justify-center rounded-full bg-surface shadow-elevated transition active:scale-95"
+          style={{ color: seguirUsuario ? "#8A1538" : "#94a3b8" }}
+        >
+          <Crosshair className="size-5" />
+        </button>
+      )}
 
       {/* Botones de zoom (debajo, mismo lado) */}
       <div className="absolute bottom-[46%] right-3 z-[500] flex flex-col overflow-hidden rounded-full border border-border bg-surface shadow-elevated">
