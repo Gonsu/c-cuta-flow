@@ -121,6 +121,10 @@ interface CucutaMapProps {
   /** Si está navegando, dibuja flecha de heading y divide la ruta en recorrida/pendiente. */
   navegando?: boolean;
   heading?: number | null;
+  /** Si true, el mapa sigue automáticamente la ubicación del usuario. */
+  seguirUsuario?: boolean;
+  /** Se dispara cuando el usuario arrastra el mapa manualmente. */
+  onUsuarioMovioMapa?: () => void;
 }
 
 export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function CucutaMap(
