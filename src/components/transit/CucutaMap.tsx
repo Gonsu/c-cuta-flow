@@ -166,6 +166,11 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
     zoomOut: () => mapRef.current?.zoomOut(),
     setLayer: (c: Capa) => setCapa(c),
     getLayer: () => capa,
+    centerOnUser: (zoom = 17) => {
+      const m = mapRef.current;
+      if (!m || !ubicacionUsuario) return;
+      m.flyTo([ubicacionUsuario.lat, ubicacionUsuario.lng], zoom, { duration: 0.6 });
+    },
     locateMe: () => {
       if (!navigator.geolocation) return;
       navigator.geolocation.getCurrentPosition(
@@ -182,6 +187,7 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
       );
     },
   }));
+
 
   const cfg = CAPAS[capa];
 
