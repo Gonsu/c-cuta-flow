@@ -141,6 +141,8 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
     ubicacionUsuario,
     navegando = false,
     heading = null,
+    seguirUsuario = false,
+    onUsuarioMovioMapa,
   },
   ref,
 ) {
