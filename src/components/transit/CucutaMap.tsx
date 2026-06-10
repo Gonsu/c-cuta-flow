@@ -359,5 +359,3 @@ function FollowAndDrag({
 
   return null;
 }
-
-}
