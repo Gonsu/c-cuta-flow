@@ -116,6 +116,9 @@ interface CucutaMapProps {
   onSeleccionMapa: (lat: number, lng: number) => void;
   onUbicacion?: (lat: number, lng: number) => void;
   ubicacionUsuario?: { lat: number; lng: number } | null;
+  /** Si está navegando, dibuja flecha de heading y divide la ruta en recorrida/pendiente. */
+  navegando?: boolean;
+  heading?: number | null;
 }
 
 export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function CucutaMap(
