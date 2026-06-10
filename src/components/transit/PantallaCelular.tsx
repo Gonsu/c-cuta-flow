@@ -175,6 +175,7 @@ export function PantallaCelular() {
     }
     setNavegando(true);
     setEnVivo(true);
+    setSeguirUsuario(true);
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude, heading: h } = pos.coords;
@@ -194,6 +195,10 @@ export function PantallaCelular() {
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 },
     );
     watchIdRef.current = id;
+    // Auto-centrar al iniciar la navegación (espera el primer fix si hace falta)
+    window.setTimeout(() => {
+      mapaRef.current?.centerOnUser(17);
+    }, 400);
     toast.success("Navegación iniciada", {
       description: "Siguiendo tu ubicación en tiempo real",
     });
@@ -205,6 +210,7 @@ export function PantallaCelular() {
     }
     watchIdRef.current = null;
     setNavegando(false);
+    setSeguirUsuario(false);
   };
 
   useEffect(() => {
