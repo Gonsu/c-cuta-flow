@@ -358,6 +358,8 @@ export function PantallaCelular() {
           onSeleccionMapa={handleSeleccionMapa}
           onUbicacion={(lat, lng) => setUbicacion({ lat, lng })}
           ubicacionUsuario={ubicacion}
+          navegando={navegando}
+          heading={heading}
         />
       </div>
 
