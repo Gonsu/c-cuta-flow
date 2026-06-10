@@ -50,6 +50,20 @@ const iconoUbicacion = L.divIcon({
   iconAnchor: [11, 11],
 });
 
+function iconoFlechaNav(headingDeg: number) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;transform:rotate(${headingDeg}deg);transition:transform 200ms linear">
+      <svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="17" cy="17" r="15" fill="white" stroke="#8A1538" stroke-width="2"/>
+        <path d="M17 5 L26 26 L17 21 L8 26 Z" fill="#8A1538" stroke="white" stroke-width="1.2" stroke-linejoin="round"/>
+      </svg>
+    </div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+  });
+}
+
 export type Capa = "estandar" | "satelite" | "relieve" | "transporte" | "trafico";
 
 const CAPAS: Record<Capa, { url: string; subdomains?: string[]; attribution?: string }> = {
