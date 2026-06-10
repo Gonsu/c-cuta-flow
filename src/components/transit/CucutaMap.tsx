@@ -327,3 +327,37 @@ function FitBounds({ positions }: { positions: [number, number][] | null }) {
   }, [map, positions]);
   return null;
 }
+
+function FollowAndDrag({
+  ubicacion,
+  seguir,
+  onDragManual,
+}: {
+  ubicacion: { lat: number; lng: number } | null;
+  seguir: boolean;
+  onDragManual?: () => void;
+}) {
+  const map = useMap();
+  const programaticoRef = useRef(false);
+
+  useMapEvents({
+    dragstart() {
+      if (programaticoRef.current) return;
+      onDragManual?.();
+    },
+  });
+
+  useEffect(() => {
+    if (!seguir || !ubicacion) return;
+    programaticoRef.current = true;
+    map.panTo([ubicacion.lat, ubicacion.lng], { animate: true, duration: 0.5 });
+    const t = window.setTimeout(() => {
+      programaticoRef.current = false;
+    }, 700);
+    return () => window.clearTimeout(t);
+  }, [map, seguir, ubicacion?.lat, ubicacion?.lng]);
+
+  return null;
+}
+
+}
