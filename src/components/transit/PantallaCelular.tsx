@@ -176,8 +176,11 @@ export function PantallaCelular() {
     setEnVivo(true);
     const id = navigator.geolocation.watchPosition(
       (pos) => {
-        const { latitude, longitude } = pos.coords;
+        const { latitude, longitude, heading: h } = pos.coords;
         setUbicacion({ lat: latitude, lng: longitude });
+        if (typeof h === "number" && !Number.isNaN(h)) {
+          setHeading(h);
+        }
         if (dentroDelAMC({ lat: latitude, lng: longitude })) {
           setOrigen({ label: "Tu ubicación", lat: latitude, lng: longitude });
         }
