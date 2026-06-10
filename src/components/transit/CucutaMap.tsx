@@ -133,9 +133,16 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
     onSeleccionMapa,
     onUbicacion,
     ubicacionUsuario,
+    navegando = false,
+    heading = null,
   },
   ref,
 ) {
+  // Mantenemos el último heading conocido para no perder dirección cuando el GPS no la entrega.
+  const lastHeadingRef = useRef<number>(0);
+  if (typeof heading === "number" && !Number.isNaN(heading)) {
+    lastHeadingRef.current = heading;
+  }
   const center: LatLngExpression = origen
     ? [origen.lat, origen.lng]
     : [7.898144, -72.488809];
