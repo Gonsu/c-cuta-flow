@@ -229,32 +229,42 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
         />
       )}
 
-      {rutaPrincipal && (
-        <>
-          <Polyline
-            positions={rutaPrincipal}
-            pathOptions={{
-              color: colorPrincipal,
-              weight: 12,
-              opacity: 0.18,
-              lineCap: "round",
-              lineJoin: "round",
-            }}
-          />
-          <Polyline
-            positions={rutaPrincipal}
-            pathOptions={{
-              color: colorPrincipal,
-              weight: 6,
-              opacity: 1,
-              lineCap: "round",
-              lineJoin: "round",
-            }}
-          />
-        </>
-      )}
+      {rutaPrincipal && (() => {
+        let idxCercano = 0;
+        if (navegando && ubicacionUsuario && rutaPrincipal.length > 1) {
+          let best = Infinity;
+          for (let i = 0; i < rutaPrincipal.length; i++) {
+            const [lat, lng] = rutaPrincipal[i];
+            const dLat = lat - ubicacionUsuario.lat;
+            const dLng = lng - ubicacionUsuario.lng;
+            const d2 = dLat * dLat + dLng * dLng;
+            if (d2 < best) { best = d2; idxCercano = i; }
+          }
+        }
+        const recorrida = navegando && idxCercano > 0 ? rutaPrincipal.slice(0, idxCercano + 1) : null;
+        const pendiente = navegando && idxCercano > 0 ? rutaPrincipal.slice(idxCercano) : rutaPrincipal;
+        const colorPend = navegando ? "#8A1538" : colorPrincipal;
+        return (
+          <>
+            {recorrida && recorrida.length > 1 && (
+              <Polyline
+                positions={recorrida}
+                pathOptions={{ color: "#cbd5e1", weight: 6, opacity: 0.3, lineCap: "round", lineJoin: "round" }}
+              />
+            )}
+            <Polyline
+              positions={pendiente}
+              pathOptions={{ color: colorPend, weight: 12, opacity: 0.18, lineCap: "round", lineJoin: "round" }}
+            />
+            <Polyline
+              positions={pendiente}
+              pathOptions={{ color: colorPend, weight: 6, opacity: 1, lineCap: "round", lineJoin: "round" }}
+            />
+          </>
+        );
+      })()}
 
-      {origen && (
+      {origen && !navegando && (
         <Marker position={[origen.lat, origen.lng]} icon={iconoOrigen} />
       )}
       {destino && (
@@ -263,7 +273,7 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
       {ubicacionUsuario && (
         <Marker
           position={[ubicacionUsuario.lat, ubicacionUsuario.lng]}
-          icon={iconoUbicacion}
+          icon={navegando ? iconoFlechaNav(lastHeadingRef.current) : iconoUbicacion}
         />
       )}
 
