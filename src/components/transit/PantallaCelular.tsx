@@ -718,6 +718,21 @@ export function PantallaCelular() {
 
 
 
+      {/* Botón centrar mapa durante navegación */}
+      {navegando && (
+        <button
+          onClick={() => {
+            setSeguirUsuario(true);
+            mapaRef.current?.centerOnUser(17);
+          }}
+          aria-label="Centrar en mi ubicación"
+          className="absolute bottom-[calc(46%+5rem)] right-3 z-[500] flex size-11 items-center justify-center rounded-full bg-surface shadow-elevated transition active:scale-95"
+          style={{ color: seguirUsuario ? "#8A1538" : "#94a3b8" }}
+        >
+          <Crosshair className="size-5" />
+        </button>
+      )}
+
       {/* Botones de zoom (debajo, mismo lado) */}
       <div className="absolute bottom-[46%] right-3 z-[500] flex flex-col overflow-hidden rounded-full border border-border bg-surface shadow-elevated">
         <button
