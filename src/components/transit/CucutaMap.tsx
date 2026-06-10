@@ -95,7 +95,9 @@ export interface CucutaMapHandle {
   locateMe: () => void;
   setLayer: (c: Capa) => void;
   getLayer: () => Capa;
+  centerOnUser: (zoom?: number) => void;
 }
+
 
 interface RutaParaMapa {
   coords: [number, number][];
