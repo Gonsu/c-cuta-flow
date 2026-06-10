@@ -94,6 +94,7 @@ export function PantallaCelular() {
   // Navegación turn-by-turn con geolocalización del dispositivo
   const [navegando, setNavegando] = useState(false);
   const [heading, setHeading] = useState<number | null>(null);
+  const [seguirUsuario, setSeguirUsuario] = useState(false);
   const watchIdRef = useRef<number | null>(null);
 
   // Mostrar/ocultar bloque de datos (distancia, tráfico, clima, semáforos)
