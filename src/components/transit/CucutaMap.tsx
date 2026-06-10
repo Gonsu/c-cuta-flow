@@ -215,6 +215,13 @@ export const CucutaMap = forwardRef<CucutaMapHandle, CucutaMapProps>(function Cu
 
       <ClickHandler enabled={!!modoSeleccion} onClick={onSeleccionMapa} />
 
+      <FollowAndDrag
+        ubicacion={ubicacionUsuario ?? null}
+        seguir={seguirUsuario}
+        onDragManual={onUsuarioMovioMapa}
+      />
+
+
       {/* Ruta de comparación (ej. "evitando semáforos") por debajo de la principal */}
       {rutaComparacion && (
         <Polyline
