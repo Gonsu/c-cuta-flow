@@ -26,8 +26,8 @@ import { toast } from "sonner";
 
 const ORIGEN_PLACEHOLDER: Punto = {
   label: "Obteniendo tu ubicación…",
-  lat: 7.8939,
-  lng: -72.5078,
+  lat: 7.898144,
+  lng: -72.488809,
 };
 const DESTINO_DEFAULT: Punto = {
   label: "UFPS · Campus Principal · Cl. 2 #11A E-46, Quinta Oriental, Cúcuta",
@@ -52,7 +52,7 @@ export function PantallaCelular() {
   // Al montar: intenta obtener la ubicación GPS y la usa como "Desde"
   useEffect(() => {
     if (!navigator.geolocation) {
-      setOrigen({ label: "Activa tu ubicación", lat: 7.8939, lng: -72.5078 });
+      setOrigen({ label: "Activa tu ubicación", lat: 7.898144, lng: -72.488809 });
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -78,7 +78,7 @@ export function PantallaCelular() {
         }
       },
       () => {
-        setOrigen({ label: "Activa tu ubicación", lat: 7.8939, lng: -72.5078 });
+        setOrigen({ label: "Activa tu ubicación", lat: 7.898144, lng: -72.488809 });
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 30_000 },
     );
@@ -141,9 +141,9 @@ export function PantallaCelular() {
   /** Rellena destino con UFPS (datos hardcodeados, sin geocodificación). */
   const irAlaUFPS = () => {
     const UFPS: Punto = {
-      label: "UFPS · Campus Principal · Calle 2 11a E-46, Quinta Oriental, Cúcuta",
-      lat: 7.8939,
-      lng: -72.5078,
+      label: "UFPS · Campus Principal",
+      lat: 7.898144,
+      lng: -72.488809,
     };
     setDestino(UFPS);
     if (!navigator.geolocation) {
