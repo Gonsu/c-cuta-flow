@@ -19,8 +19,8 @@ export const POIS_CUCUTA: POICucuta[] = [
   {
     id: "jardin_plaza",
     nombre: "Jardín Plaza Cúcuta",
-    lat: 7.9148,
-    lng: -72.4836,
+    lat: 7.922286,
+    lng: -72.479111,
     categoria: "Centro Comercial",
     aliases: ["jardin plaza", "jardín plaza", "cc jardin plaza"],
   },
